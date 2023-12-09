@@ -70,21 +70,21 @@ mod tests {
 
   #[test]
   fn test1_sample() {
-    assert_eq!(part1(sample_lines("00a")), 142);
+    assert_eq!(part1(sample_lines("01a")), 142);
   }
 
   #[test]
   fn test1() {
-    assert_eq!(part1(sample_lines("00")), 52974);
+    assert_eq!(part1(sample_lines("01")), 52974);
   }
 
   #[test]
   fn test2_sample() {
-    assert_eq!(part2(sample_lines("00b")), 281);
+    assert_eq!(part2(sample_lines("01b")), 281);
   }
 
   #[test]
   fn test2() {
-    assert_eq!(part2(sample_lines("00")), 53340);
+    assert_eq!(part2(sample_lines("01")), 53340);
   }
 }
