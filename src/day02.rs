@@ -1,6 +1,5 @@
-use std::collections::HashMap;
-
-use nom::{IResult, character::complete::{u32, multispace1, alpha1}, bytes::complete::tag, sequence::separated_pair, multi::separated_list1};
+use enum_map::{EnumMap, Enum};
+use nom::{IResult, character::complete::u32, bytes::complete::tag, sequence::separated_pair, multi::separated_list1, branch::alt};
 
 pub fn part1(lines: impl Iterator<Item=String>) -> usize {
   lines
@@ -16,7 +15,10 @@ pub fn part2(lines: impl Iterator<Item=String>) -> usize {
     .sum()
 }
 
-type Round = HashMap<String, usize>;
+#[derive(Debug, Enum, Clone, Copy)]
+enum Color { Red, Green, Blue }
+
+type Round = EnumMap<Color, usize>;
 
 #[derive(Debug)]
 struct Game {
@@ -38,38 +40,40 @@ fn parse(input: &str) -> IResult<&str, Game> {
     .collect();
   Ok((input, Game { id, rounds }))
 }
-fn parse_entry(input: &str) -> IResult<&str, (String, usize)> {
+fn parse_entry(input: &str) -> IResult<&str, (Color, usize)> {
+  let parse_color = alt((
+    parse_one_color("red"  , Color::Red  ),
+    parse_one_color("green", Color::Green),
+    parse_one_color("blue" , Color::Blue ),
+  ));
   let (input, (v, k)) = separated_pair(
     u32,
-    multispace1,
-    alpha1,
+    tag(" "),
+    parse_color,
   )(input)?;
-  Ok((input, (k.to_owned(), v.try_into().unwrap())))
+  Ok((input, (k, v.try_into().unwrap())))
+}
+fn parse_one_color(text: &'static str, color: Color) -> impl Fn(&str) -> IResult<&str, Color> {
+  move |input| {
+    let (input, _) = tag(text)(input)?;
+    Ok((input, color))
+  }
 }
 
 fn possible(round: &Round) -> bool {
-  round.iter().all(|(k, &v)|
-    match k.as_str() {
-      "red"   => v <= 12,
-      "green" => v <= 13,
-      "blue"  => v <= 14,
-      _       => false,
-    }
-  )
+     round[Color::Red]   <= 12
+  && round[Color::Green] <= 13
+  && round[Color::Blue]  <= 14
 }
 
 fn power(game: &Game) -> usize {
   let mut mins: Round = Default::default();
   for round in &game.rounds {
     for (k, &v) in round {
-      mins.entry(k.clone())
-        .and_modify(|v0| { *v0 = Ord::max(v, *v0) })
-        .or_insert(v);
+      mins[k] = Ord::max(v, mins[k]);
     }
   }
-  ["red", "green", "blue"].iter()
-    .map(|&k| mins.get(k).copied().unwrap_or_default())
-    .product()
+  mins.into_values().product()
 }
 
 #[cfg(test)]
