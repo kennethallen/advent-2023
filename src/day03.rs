@@ -21,6 +21,28 @@ pub fn part1(lines: impl Iterator<Item=String>) -> usize {
     .sum()
 }
 
+pub fn part2(lines: impl Iterator<Item=String>) -> usize {
+  let schem = parse(lines);
+
+  schem.syms.iter()
+    .filter(|(_, &is_gear)| is_gear)
+    .flat_map(|(&(y, x), _)| -> Option<usize> {
+      let mut inc_nums = BitSet::with_capacity(schem.nums.len());
+      for dy in -1..=1 {
+        for dx in -1..=1 {
+          if let Some(&i) = schem.num_find.get(&(y+dy, x+dx)) {
+            inc_nums.insert(i);
+            if inc_nums.len() > 2 { return None; }
+          }
+        }
+      }
+      if inc_nums.len() == 2 {
+        Some(inc_nums.into_iter().map(|i| schem.nums[i].1).product())
+      } else { None }
+    })
+    .sum()
+}
+
 type Coord = (isize, isize);
 
 #[derive(Debug)]
@@ -30,7 +52,7 @@ struct Number(Coord, usize);
 struct Schematic {
   nums: Vec<Number>,
   num_find: HashMap<Coord, usize>,
-  syms: HashMap<Coord, char>,
+  syms: HashMap<Coord, bool>,
 }
 
 fn parse(lines: impl Iterator<Item=String>) -> Schematic {
@@ -53,7 +75,7 @@ fn parse(lines: impl Iterator<Item=String>) -> Schematic {
       } else {
         if let Some(n) = num.take() { schem.nums.push(n); }
         if char != '.' {
-          schem.syms.insert((y, x), char);
+          schem.syms.insert((y, x), char == '*');
         }
       }
     }
@@ -76,5 +98,15 @@ mod tests {
   #[test]
   fn test1() {
     assert_eq!(part1(sample_lines("03")), 514969);
+  }
+
+  #[test]
+  fn test2_sample() {
+    assert_eq!(part2(sample_lines("03a")), 467835);
+  }
+
+  #[test]
+  fn test2() {
+    assert_eq!(part2(sample_lines("03")), 78915902);
   }
 }
