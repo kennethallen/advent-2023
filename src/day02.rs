@@ -9,6 +9,12 @@ pub fn part1(lines: impl Iterator<Item=String>) -> usize {
     .map(|g| g.id)
     .sum()
 }
+pub fn part2(lines: impl Iterator<Item=String>) -> usize {
+  lines
+    .map(|line| parse(&line).unwrap().1)
+    .map(|g| power(&g))
+    .sum()
+}
 
 type Round = HashMap<String, usize>;
 
@@ -52,6 +58,20 @@ fn possible(round: &Round) -> bool {
   )
 }
 
+fn power(game: &Game) -> usize {
+  let mut mins: Round = Default::default();
+  for round in &game.rounds {
+    for (k, &v) in round {
+      mins.entry(k.clone())
+        .and_modify(|v0| { *v0 = Ord::max(v, *v0) })
+        .or_insert(v);
+    }
+  }
+  ["red", "green", "blue"].iter()
+    .map(|&k| mins.get(k).copied().unwrap_or_default())
+    .product()
+}
+
 #[cfg(test)]
 mod tests {
   use super::*;
@@ -65,5 +85,15 @@ mod tests {
   #[test]
   fn test1() {
     assert_eq!(part1(sample_lines("02")), 3099);
+  }
+
+  #[test]
+  fn test2_sample() {
+    assert_eq!(part2(sample_lines("02a")), 2286);
+  }
+
+  #[test]
+  fn test2() {
+    assert_eq!(part2(sample_lines("02")), 72970);
   }
 }
