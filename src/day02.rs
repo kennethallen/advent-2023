@@ -1,5 +1,5 @@
 use enum_map::{EnumMap, Enum};
-use nom::{IResult, character::complete::u32, bytes::complete::tag, sequence::separated_pair, multi::separated_list1, branch::alt};
+use nom::{IResult, character::complete::{u32, char}, bytes::complete::tag, sequence::separated_pair, multi::separated_list1, branch::alt, Parser};
 
 pub fn part1(lines: impl Iterator<Item=String>) -> usize {
   lines
@@ -35,12 +35,14 @@ fn parse(input: &str) -> IResult<&str, Game> {
     tag("; "),
     separated_list1(tag(", "), parse_entry),
   )(input)?;
+  assert!(input.is_empty());
   let rounds = rounds.into_iter()
     .map(|round| round.into_iter().collect())
     .collect();
   Ok((input, Game { id, rounds }))
 }
 fn parse_entry(input: &str) -> IResult<&str, (Color, usize)> {
+  let parse_one_color = |text: &'static str, color: Color| tag(text).map(move |_| color);
   let parse_color = alt((
     parse_one_color("red"  , Color::Red  ),
     parse_one_color("green", Color::Green),
@@ -48,16 +50,10 @@ fn parse_entry(input: &str) -> IResult<&str, (Color, usize)> {
   ));
   let (input, (v, k)) = separated_pair(
     u32,
-    tag(" "),
+    char(' '),
     parse_color,
   )(input)?;
   Ok((input, (k, v.try_into().unwrap())))
-}
-fn parse_one_color(text: &'static str, color: Color) -> impl Fn(&str) -> IResult<&str, Color> {
-  move |input| {
-    let (input, _) = tag(text)(input)?;
-    Ok((input, color))
-  }
 }
 
 fn possible(round: &Round) -> bool {
