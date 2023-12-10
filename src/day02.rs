@@ -1,5 +1,7 @@
+use crate::util::usize;
+
 use enum_map::{EnumMap, Enum};
-use nom::{IResult, character::complete::{u32, char}, bytes::complete::tag, sequence::separated_pair, multi::separated_list1, branch::alt, Parser};
+use nom::{IResult, character::complete::char, bytes::complete::tag, sequence::separated_pair, multi::separated_list1, branch::alt, Parser};
 
 pub fn part1(lines: impl Iterator<Item=String>) -> usize {
   lines
@@ -28,8 +30,7 @@ struct Game {
 
 fn parse(input: &str) -> IResult<&str, Game> {
   let (input, _) = tag("Game ")(input)?;
-  let (input, id) = u32(input)?;
-  let id = id.try_into().unwrap();
+  let (input, id) = usize(input)?;
   let (input, _) = tag(": ")(input)?;
   let (input, rounds) = separated_list1(
     tag("; "),
@@ -49,11 +50,11 @@ fn parse_entry(input: &str) -> IResult<&str, (Color, usize)> {
     parse_one_color("blue" , Color::Blue ),
   ));
   let (input, (v, k)) = separated_pair(
-    u32,
+    usize,
     char(' '),
     parse_color,
   )(input)?;
-  Ok((input, (k, v.try_into().unwrap())))
+  Ok((input, (k, v)))
 }
 
 fn possible(round: &Round) -> bool {
