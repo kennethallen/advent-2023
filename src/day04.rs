@@ -2,7 +2,7 @@ use crate::util::usize;
 
 use std::collections::{HashSet, VecDeque};
 
-use nom::{IResult, character::complete::char, bytes::complete::tag, multi::{many1, separated_list0}, sequence::{separated_pair, pair}};
+use nom::{IResult, character::complete::char, bytes::complete::tag, multi::{many1, many0}, sequence::{pair, delimited, terminated, preceded}, combinator::eof};
 
 pub fn part1(lines: impl Iterator<Item=String>) -> usize {
   lines
@@ -43,19 +43,20 @@ impl Card {
   fn parse(input: &str) -> IResult<&str, Self> {
     let spaces = || many1(char(' '));
 
-    let (input, _) = tag("Card")(input)?;
-    let (input, _) = spaces()(input)?;
-    let (input, id) = usize(input)?;
-    let (input, _) = char(':')(input)?;
-    let (input, _) = spaces()(input)?;
-    let (input, (winners, nums)) = separated_pair(
-      separated_list0(spaces(), usize),
-      pair(tag(" |"), spaces()),
-      separated_list0(spaces(), usize),
+    let (input, id) = delimited(
+      pair(tag("Card"), spaces()),
+      usize,
+      char(':'),
     )(input)?;
-    assert!(input.is_empty());
+    let (input, winners) = terminated(
+      many0(preceded(spaces(), usize)),
+      tag(" |"),
+    )(input)?;
     let winners = winners.into_iter().collect();
-
+    let (input, nums) = terminated(
+      many0(preceded(spaces(), usize)),
+      eof,
+    )(input)?;
     Ok((input, Self { id, winners, nums }))
   }
 

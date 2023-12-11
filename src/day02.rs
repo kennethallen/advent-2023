@@ -1,7 +1,7 @@
 use crate::util::usize;
 
 use enum_map::{EnumMap, Enum};
-use nom::{IResult, character::complete::char, bytes::complete::tag, sequence::separated_pair, multi::separated_list1, branch::alt, Parser};
+use nom::{IResult, character::complete::char, bytes::complete::tag, sequence::{separated_pair, delimited, terminated}, multi::separated_list1, branch::alt, Parser, combinator::eof};
 
 pub fn part1(lines: impl Iterator<Item=String>) -> usize {
   lines
@@ -29,14 +29,18 @@ struct Game {
 }
 
 fn parse(input: &str) -> IResult<&str, Game> {
-  let (input, _) = tag("Game ")(input)?;
-  let (input, id) = usize(input)?;
-  let (input, _) = tag(": ")(input)?;
-  let (input, rounds) = separated_list1(
-    tag("; "),
-    separated_list1(tag(", "), parse_entry),
+  let (input, id) = delimited(
+    tag("Game "),
+    usize,
+    tag(": "),
   )(input)?;
-  assert!(input.is_empty());
+  let (input, rounds) = terminated(
+    separated_list1(
+      tag("; "),
+      separated_list1(tag(", "), parse_entry),
+    ),
+    eof,
+  )(input)?;
   let rounds = rounds.into_iter()
     .map(|round| round.into_iter().collect())
     .collect();
