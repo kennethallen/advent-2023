@@ -65,29 +65,45 @@ impl Map {
     Ok((input, Self { inner: entries.into_iter().map(|(off, start, len)| (start, (off, len))).collect() }))
   }
 
-  fn translate(&self, (mut in_start, mut in_len): Range) -> Vec<Range> {
+  fn translate(&self, (mut in_start, mut in_len): Range) -> impl IntoIterator<Item=Range> {
     // TODO implement custom iterator
     let mut outs = vec![];
     let mut curs = self.inner.upper_bound(Bound::Included(&in_start));
-    while let Some((&map_start, &(map_off, map_len))) = curs.key_value() {
-      if in_start < map_start { // Gap before next map entry
-        let out_len = Ord::min(in_len, map_start - in_start);
-        outs.push((in_start, out_len));
-        in_start += out_len;
-        in_len -= out_len;
-        if in_len == 0 { break; }
-      } else {
-        if in_start < map_start + map_len {
-          let out_len = Ord::min(in_len, map_len - (in_start - map_start));
-          outs.push((in_start - map_start + map_off, out_len));
+    // Until we go off the high end of the mappings...
+    'scan: {
+      while let Some((&map_start, &(map_off, map_len))) = curs.key_value() {
+        if in_start < map_start {
+          // There is a gap before the next mapping. This will never happen on the first iteration. Identity-map until that one starts
+          let out_len = map_start - in_start;
+          if in_len < out_len {
+            // There is room before the next mapping for the remaining range
+            outs.push((in_start, in_len));
+            break 'scan;
+          }
+          outs.push((in_start, out_len));
           in_start += out_len;
           in_len -= out_len;
-          if in_len == 0 { break; }
         }
+
+        if in_start < map_start + map_len {
+          // This mapping intersects with our remaining range
+          let out_len = map_len - (in_start - map_start);
+          let out_start = in_start - map_start + map_off;
+          if in_len < out_len {
+            // There is room in this mapping for the remaining range
+            outs.push((out_start, in_len));
+            break 'scan;
+          }
+          outs.push((out_start, out_len));
+          in_start += out_len;
+          in_len -= out_len;
+        }
+        // We're done with this mapping. Move to the next higher one
         curs.move_next();
       }
+      // We are off the high end of the mappings. Identity-map the remaining range
+      outs.push((in_start, in_len));
     }
-    if in_len > 0 { outs.push((in_start, in_len)); }
     outs
   }
 }
