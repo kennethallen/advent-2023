@@ -2,7 +2,7 @@ use std::{collections::BTreeMap, ops::Bound};
 
 use crate::util::usize;
 
-use nom::{IResult, character::complete::{char, line_ending}, bytes::complete::tag, multi::{many0, many1}, sequence::{delimited, preceded, terminated, tuple, separated_pair}, combinator::eof};
+use nom::{IResult, character::complete::{char, line_ending}, bytes::complete::tag, multi::{many0, many1}, sequence::{delimited, preceded, terminated, tuple, separated_pair}, combinator::eof, Parser};
 
 pub fn part1(file: String) -> usize { process(file, parse_single_seeds) }
 pub fn part2(file: String) -> usize { process(file, parse_seed_ranges) }
@@ -41,8 +41,9 @@ fn parse(input: &str, parse_seeds: impl FnMut(&str) -> IResult<&str, Vec<Range>>
 }
 
 fn parse_single_seeds(input: &str) -> IResult<&str, Vec<Range>> {
-  let (input, seeds) = many1(preceded(char(' '), usize))(input)?;
-  Ok((input, seeds.into_iter().map(|i| (i, 1)).collect()))
+  many1(preceded(char(' '), usize))
+    .map(|seeds| seeds.into_iter().map(|i| (i, 1)).collect())
+    .parse(input)
 }
 fn parse_seed_ranges(input: &str) -> IResult<&str, Vec<Range>> {
   many1(preceded(char(' '), separated_pair(usize, char(' '), usize)))(input)
