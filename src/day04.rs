@@ -1,20 +1,35 @@
 use crate::util::usize;
 
-use std::collections::HashSet;
+use std::collections::{HashSet, VecDeque};
 
 use nom::{IResult, character::complete::char, bytes::complete::tag, multi::{many1, separated_list0}, sequence::{separated_pair, pair}};
 
 pub fn part1(lines: impl Iterator<Item=String>) -> usize {
-  /*let mut cards = lines
-    .map(|line| parse(&line).unwrap().1);
-  let c0 = cards.next().unwrap();
-  assert!(cards.all(|c| c.nums.len() == c0.nums.len() && c.winners.len() == c0.winners.len()));
-
-  1*/
   lines
-    .map(|line| parse(&line).unwrap().1)
-    .map(|c| score(&c))
+    .map(|line| Card::parse(&line).unwrap().1)
+    .map(|c| c.score())
     .sum()
+}
+
+pub fn part2(lines: impl Iterator<Item=String>) -> usize {
+  let cards = lines
+    .map(|line| Card::parse(&line).unwrap().1);
+
+  let mut counts = VecDeque::new();
+  let mut sum = 0;
+  for (i, card) in cards.enumerate() {
+    assert!(card.id == i + 1);
+    let count = counts.pop_front().unwrap_or(1);
+    sum += count;
+    let matches = card.matches();
+    while counts.len() < matches {
+      counts.push_back(1);
+    }
+    for j in 0..matches {
+      counts[j] += count;
+    }
+  }
+  sum
 }
 
 #[derive(Debug)]
@@ -24,39 +39,37 @@ struct Card {
   nums: Vec<usize>,
 }
 
-fn parse(input: &str) -> IResult<&str, Card> {
-  let spaces = || many1(char(' '));
+impl Card {
+  fn parse(input: &str) -> IResult<&str, Self> {
+    let spaces = || many1(char(' '));
 
-  let (input, _) = tag("Card")(input)?;
-  let (input, _) = spaces()(input)?;
-  let (input, id) = usize(input)?;
-  let (input, _) = char(':')(input)?;
-  let (input, _) = spaces()(input)?;
-  let (input, (winners, nums)) = separated_pair(
-    separated_list0(spaces(), usize),
-    pair(tag(" |"), spaces()),
-    separated_list0(spaces(), usize),
-  )(input)?;
-  assert!(input.is_empty());
-  let winners = winners.into_iter().collect();
+    let (input, _) = tag("Card")(input)?;
+    let (input, _) = spaces()(input)?;
+    let (input, id) = usize(input)?;
+    let (input, _) = char(':')(input)?;
+    let (input, _) = spaces()(input)?;
+    let (input, (winners, nums)) = separated_pair(
+      separated_list0(spaces(), usize),
+      pair(tag(" |"), spaces()),
+      separated_list0(spaces(), usize),
+    )(input)?;
+    assert!(input.is_empty());
+    let winners = winners.into_iter().collect();
 
-  Ok((input, Card { id, winners, nums }))
-}
+    Ok((input, Self { id, winners, nums }))
+  }
 
-fn score(card: &Card) -> usize {
-  dbg!(&card, card.nums.iter()
-    .filter(|n| card.winners.contains(n))
-    .count(), match card.nums.iter()
-    .filter(|n| card.winners.contains(n))
-    .count() {
-    0 => 0,
-    n => 1 << n-1,
-  });
-  match card.nums.iter()
-    .filter(|n| card.winners.contains(n))
-    .count() {
-    0 => 0,
-    n => 1 << n-1,
+  fn matches(&self) -> usize {
+    self.nums.iter()
+      .filter(|n| self.winners.contains(n))
+      .count()
+  }
+
+  fn score(&self) -> usize {
+    match self.matches() {
+      0 => 0,
+      n => 1 << n-1,
+    }
   }
 }
 
@@ -73,5 +86,15 @@ mod tests {
   #[test]
   fn test1() {
     assert_eq!(part1(sample_lines("04")), 22897);
+  }
+
+  #[test]
+  fn test2_sample() {
+    assert_eq!(part2(sample_lines("04a")), 30);
+  }
+
+  #[test]
+  fn test2() {
+    assert_eq!(part2(sample_lines("04")), 5095824);
   }
 }
