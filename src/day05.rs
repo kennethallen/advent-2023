@@ -2,18 +2,21 @@ use std::{collections::BTreeMap, ops::Bound};
 
 use crate::util::usize;
 
-use nom::{IResult, character::complete::{char, line_ending}, bytes::complete::tag, multi::{separated_list1, many0}, sequence::{preceded, terminated, tuple}, combinator::eof};
+use nom::{IResult, character::complete::{char, line_ending}, bytes::complete::tag, multi::{many0, many1}, sequence::{preceded, terminated, tuple}, combinator::eof};
 
 pub fn part1(file: String) -> usize {
-  let (_, (seeds, maps)) = parse(file.as_str()).unwrap();
+  let (_, (seed_ranges, maps)) = parse(file.as_str()).unwrap();
 
-  seeds.into_iter()
-    .map(|x| maps.iter().fold(x, |x, m| m.translate(x)))
-    .min().unwrap()
+  let mut ranges: Box<dyn Iterator<Item=Range>> = Box::new(seed_ranges.into_iter());
+  for map in &maps {
+    ranges = Box::new(ranges.flat_map(|r| map.translate(r)));
+  }
+  ranges.map(|t| t.0).min().unwrap()
 }
 
-fn parse(input: &str) -> IResult<&str, (Vec<usize>, Vec<Map>)> {
+fn parse(input: &str) -> IResult<&str, (Vec<Range>, Vec<Map>)> {
   let (mut input, seeds) = terminated(parse_seeds, line_ending)(input)?;
+  let seeds = seeds.into_iter().map(|i| (i, 1)).collect();
   let mut maps = vec![];
   for elems in ["seed", "soil", "fertilizer", "water", "light", "temperature", "humidity", "location"].windows(2) {
     let (input1, map) = preceded(
@@ -33,14 +36,16 @@ fn parse(input: &str) -> IResult<&str, (Vec<usize>, Vec<Map>)> {
 
 fn parse_seeds(input: &str) -> IResult<&str, Vec<usize>> {
   preceded(
-    tag("seeds: "),
-    separated_list1(char(' '), usize),
+    tag("seeds:"),
+    many1(preceded(char(' '), usize)),
   )(input)
 }
 
+type Range = (usize, usize);
+
 #[derive(Default, Debug)]
 struct Map {
-  inner: BTreeMap<usize, (usize, usize)>,
+  inner: BTreeMap<usize, Range>,
 }
 
 impl Map {
@@ -53,13 +58,30 @@ impl Map {
     Ok((input, Self { inner: entries.into_iter().map(|(off, start, len)| (start, (off, len))).collect() }))
   }
 
-  fn translate(&self, x: usize) -> usize {
-    if let Some((start, (off, len))) = self.inner.upper_bound(Bound::Included(&x)).key_value() {
-      if x < start + len {
-        return x - start + off;
+  fn translate(&self, (mut in_start, mut in_len): Range) -> Vec<Range> {
+    // TODO implement custom iterator
+    let mut outs = vec![];
+    let mut curs = self.inner.upper_bound(Bound::Included(&in_start));
+    while let Some((&map_start, &(map_off, map_len))) = curs.key_value() {
+      if in_start < map_start { // Gap before next map entry
+        let out_len = Ord::min(in_len, map_start - in_start);
+        outs.push((in_start, out_len));
+        in_start += out_len;
+        in_len -= out_len;
+        if in_len == 0 { break; }
+      } else {
+        if in_start < map_start + map_len {
+          let out_len = Ord::min(in_len, map_len - (in_start - map_start));
+          outs.push((in_start - map_start + map_off, out_len));
+          in_start += out_len;
+          in_len -= out_len;
+          if in_len == 0 { break; }
+        }
+        curs.move_next();
       }
     }
-    x
+    if in_len > 0 { outs.push((in_start, in_len)); }
+    outs
   }
 }
 
