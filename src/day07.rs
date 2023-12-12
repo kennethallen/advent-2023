@@ -3,9 +3,12 @@ use crate::util::usize;
 use enum_map::{Enum, EnumMap};
 use nom::{IResult, character::complete::{char, one_of}, multi::count, sequence::{terminated, separated_pair}, combinator::{eof, map}};
 
-pub fn part1(lines: impl Iterator<Item=String>) -> usize {
+pub fn part1(lines: impl Iterator<Item=String>) -> usize { process(lines, false) }
+pub fn part2(lines: impl Iterator<Item=String>) -> usize { process(lines, true) }
+
+fn process(lines: impl Iterator<Item=String>, jokers: bool) -> usize {
   let mut hands: Vec<_> = lines
-    .map(|line| Hand::parse(line.as_str()).unwrap().1)
+    .map(|line| Hand::parse(line.as_str(), jokers).unwrap().1)
     .collect();
 
   hands.sort();
@@ -18,11 +21,11 @@ pub fn part1(lines: impl Iterator<Item=String>) -> usize {
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Enum, Debug, Clone, Copy)]
 enum Card {
-  Two, Three, Four, Five, Six, Seven, Eight, Nine, Ten, Jack, Queen, King, Ace,
+  Joker, Two, Three, Four, Five, Six, Seven, Eight, Nine, Ten, Jack, Queen, King, Ace,
 }
 
 impl Card {
-  fn parse(input: &str) -> IResult<&str, Self> {
+  fn parse(input: &str, jokers: bool) -> IResult<&str, Self> {
     map(
       one_of("23456789TJQKA"),
       |c| match c {
@@ -35,7 +38,7 @@ impl Card {
         '8' => Card::Eight,
         '9' => Card::Nine,
         'T' => Card::Ten,
-        'J' => Card::Jack,
+        'J' => if jokers { Card::Joker } else { Card::Jack },
         'Q' => Card::Queen,
         'K' => Card::King,
         'A' => Card::Ace,
@@ -60,43 +63,48 @@ enum HandType {
 impl HandType {
   fn calc(cards: &[Card; 5]) -> HandType {
     let mut counts: EnumMap<Card, usize> = EnumMap::default();
-    for card in cards {
-      counts[*card] += 1;
+    for &card in cards {
+      counts[card] += 1;
     }
+
+    let jokers = counts[Card::Joker];
 
     let mut metacounts = [0usize; 6];
-    for count in counts.into_values() {
-      metacounts[count] += 1;
+    for (card, count) in counts.into_iter() {
+      if card != Card::Joker {
+        metacounts[count] += 1;
+      }
     }
 
-    if metacounts[5] >= 1 {
-      HandType::FiveOfAKind
-    } else if metacounts[4] >= 1 {
-      HandType::FourOfAKind
-    } else if metacounts[3] >= 1 {
-      if metacounts[2] >= 1 {
-        HandType::FullHouse
-      } else {
-        HandType::ThreeOfAKind
+    match jokers + metacounts.iter().rposition(|&n| n > 0).unwrap() {
+      5 => HandType::FiveOfAKind,
+      4 => HandType::FourOfAKind,
+      3 => match (jokers, metacounts[2]) {
+        (2, 0) => HandType::ThreeOfAKind,
+        (1, 2) => HandType::FullHouse,
+        (1, 1) => HandType::ThreeOfAKind,
+        (0, 1) => HandType::FullHouse,
+        (0, 0) => HandType::ThreeOfAKind,
+        _ => unreachable!(),
+      },
+      2 => match (jokers, metacounts[2]) {
+        (1, 0) => HandType::OnePair,
+        (0, 2) => HandType::TwoPair,
+        (0, 1) => HandType::OnePair,
+        _ => unreachable!(),
       }
-    } else if metacounts[2] >= 1 {
-      if metacounts[2] >= 2 {
-        HandType::TwoPair
-      } else {
-        HandType::OnePair
-      }
-    } else {
-      HandType::HighCard
+      1 => HandType::HighCard,
+      _ => unreachable!(),
     }
   }
 }
 
 impl Hand {
-  fn parse(input: &str) -> IResult<&str, Self> {
+  fn parse(input: &str, jokers: bool) -> IResult<&str, Self> {
     map(
       terminated(
         separated_pair(
-          count(Card::parse, 5),
+          count(|input| Card::parse(input, jokers), 5),
           char(' '),
           usize,
         ),
@@ -123,5 +131,15 @@ mod tests {
   #[test]
   fn test1() {
     assert_eq!(part1(sample_lines("07")), 250058342);
+  }
+
+  #[test]
+  fn test2_sample() {
+    assert_eq!(part2(sample_lines("07a")), 5905);
+  }
+
+  #[test]
+  fn test2() {
+    assert_eq!(part2(sample_lines("07")), 250506580);
   }
 }
