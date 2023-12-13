@@ -1,4 +1,5 @@
 #![feature(btree_cursors)]
+#![feature(map_try_insert)]
 
 mod util;
 
