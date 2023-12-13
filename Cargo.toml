@@ -8,4 +8,6 @@ edition = "2021"
 [dependencies]
 bit-set = "0.5.3"
 enum-map = "2.7.3"
+itertools = "0.12.0"
 nom = "7.1.3"
+num-integer = "0.1.45"

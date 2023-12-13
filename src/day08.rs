@@ -1,7 +1,9 @@
-use std::{collections::{HashMap, BinaryHeap}, cmp::Reverse};
+use std::{collections::{HashMap, HashSet}, mem::{swap, take}};
 
 use enum_map::{enum_map, Enum, EnumMap};
+use itertools::iproduct;
 use nom::{IResult, character::complete::{char, one_of, line_ending}, multi::{count, many1}, sequence::{terminated, separated_pair, delimited}, combinator::{eof, map}, bytes::complete::tag};
+use num_integer::Integer;
 
 pub fn part1(file: String) -> usize {
   let (route, map) = parse(file.as_str()).unwrap().1;
@@ -37,58 +39,67 @@ pub fn part1(file: String) -> usize {
   }
 }
 
-#[derive(Default, Debug)]
-struct EndsInterval {
-  ends: Vec<usize>,
+#[derive(Default, Debug, Clone)]
+struct SparseRange {
+  vals: HashSet<usize>,
   len: usize,
 }
-impl EndsInterval {
+impl SparseRange {
   fn append(&mut self, other: &Self) {
-    self.ends.extend(other.ends.iter().map(|n| n + self.len));
+    self.vals.extend(other.vals.iter().map(|n| n + self.len));
     self.len += other.len;
   }
-}
 
-#[derive(Debug)]
-struct GhostEnds {
-  prefix: EndsInterval,
-  cycle: EndsInterval,
-}
+  fn rotate_left(&mut self, shift: usize) {
+    let old_ends = take(&mut self.vals);
+    self.vals.extend(old_ends.into_iter()
+      .map(|end| (end + self.len - shift) % self.len));
+  }
 
-impl IntoIterator for GhostEnds {
-  type Item = usize;
-  type IntoIter = GhostEndsIter;
-  fn into_iter(self) -> Self::IntoIter {
-    GhostEndsIter {
-      data: self,
-      offset: Default::default(),
-      next_idx: Default::default(),
-      in_cycle: Default::default(),
-    }
+  fn echo(&mut self, n: usize) {
+    let old_ends = take(&mut self.vals);
+    self.vals.extend(iproduct!(old_ends, 0..n)
+      .map(|(end, rep)| rep*self.len + end));
+    self.len *= n;
   }
 }
 
-struct GhostEndsIter {
-  data: GhostEnds,
-  offset: usize,
-  next_idx: usize,
-  in_cycle: bool,
+#[derive(Debug, Clone)]
+struct CyclicSet {
+  prefix: SparseRange,
+  cycle: SparseRange,
 }
 
-impl Iterator for GhostEndsIter {
-  type Item = usize;
-
-  fn next(&mut self) -> Option<Self::Item> {
-    let mut cur_ends = &(if self.in_cycle { &self.data.cycle } else { &self.data.prefix }).ends;
-    if self.next_idx >= cur_ends.len() {
-      self.next_idx = 0;
-      self.offset += (if self.in_cycle { &self.data.cycle } else { &self.data.prefix }).len;
-      self.in_cycle = true;
-      cur_ends = &self.data.cycle.ends;
+impl CyclicSet {
+  fn contains(&self, end: usize) -> bool {
+    if end < self.prefix.len {
+      self.prefix.vals.contains(&end)
+    } else {
+      self.cycle.vals.contains(&((end - self.prefix.len) % self.cycle.len))
     }
-    let elem = cur_ends[self.next_idx] + self.offset;
-    self.next_idx += 1;
-    Some(elem)
+  }
+
+  fn intersection(mut self, mut other: Self) -> Self {
+    // Ensure self has the longer (or equal) prefix
+    if self.prefix.len < other.prefix.len {
+      swap(&mut self, &mut other);
+    }
+    // Intersect prefix with other whole set
+    self.prefix.vals.retain(|&end| other.contains(end));
+    // Rotate the other's cycle as if we had matched prefix lengths. From now on, other's prefix is invalid
+    other.cycle.rotate_left((self.prefix.len - other.prefix.len) % other.cycle.len);
+
+    // Expand the cycle length to the least common multiple of the two cycle lengths and fill duplicates to keep equivalence
+    self.cycle.echo(self.cycle.len.lcm(&other.cycle.len) / self.cycle.len);
+    // Intersect cycle with other cycle
+    self.cycle.vals.retain(|end| other.cycle.vals.contains(&(end % other.cycle.len)));
+
+    self
+  }
+
+  fn min(&self) -> Option<usize> {
+    self.prefix.vals.iter().next().copied()
+      .or(self.cycle.vals.iter().next().copied().map(|end| end + self.prefix.len))
   }
 }
 
@@ -98,21 +109,21 @@ pub fn part2(file: String) -> usize {
   let jumps: HashMap<_, _> = map.keys()
     .map(|&jump_start| {
       let mut loc = jump_start;
-      let mut ends = vec![];
+      let mut ends = HashSet::new();
       for steps in 0..route.len() {
         if is_ghost_end(&loc) {
-          ends.push(steps);
+          ends.insert(steps);
         }
         loc = map[&loc][route[steps]];
       }
-      (jump_start, (loc, EndsInterval { ends, len: route.len() }))
+      (jump_start, (loc, SparseRange { vals: ends, len: route.len() }))
     })
     .collect();
 
-  let subpath_interval = |s: &[Location]|
-    s.iter().fold(EndsInterval::default(), |mut ei, l| { ei.append(&jumps[l].1); ei });
-  let end_profiles: HashMap<Location, GhostEnds> = map.keys()
-    .cloned()
+  let sparse_range = |s: &[Location]|
+    s.iter().fold(SparseRange::default(), |mut ei, l| { ei.append(&jumps[l].1); ei });
+  let end_profiles: HashMap<Location, CyclicSet> = map.keys()
+    .copied()
     .filter(is_ghost_start)
     .map(|start| {
       let mut loc = start;
@@ -120,10 +131,8 @@ pub fn part2(file: String) -> usize {
       let mut visited = HashMap::new();
       loop {
         if let Err(occupied) = visited.try_insert(loc, path.len()) {
-          break (start, GhostEnds {
-            prefix: subpath_interval(&path[0..*occupied.entry.get()]),
-            cycle: subpath_interval(&path[*occupied.entry.get()..]),
-          });
+          let (prefix, cycle) = path.split_at(*occupied.entry.get());
+          break (start, CyclicSet { prefix: sparse_range(prefix), cycle: sparse_range(cycle) });
         }
         path.push(loc);
         loc = jumps[&loc].0;
@@ -131,16 +140,10 @@ pub fn part2(file: String) -> usize {
     })
     .collect();
 
-  //TODO Chinese remainder theorem solution?
-  let mut end_iters: Vec<_> = end_profiles.into_values().map(IntoIterator::into_iter).collect();
-  let mut queue: BinaryHeap<_> = end_iters.iter_mut().enumerate().map(|(idx, iter)| (Reverse(iter.next().unwrap()), idx)).collect();
-  loop {
-    let (Reverse(lowest_end), lowest_idx) = queue.pop().unwrap();
-    if queue.iter().all(|&(Reverse(end), _)| end == lowest_end) {
-      break lowest_end;
-    }
-    queue.push((Reverse(end_iters[lowest_idx].next().unwrap()), lowest_idx));
-  }
+  end_profiles.into_values()
+    .reduce(CyclicSet::intersection)
+    .and_then(|end_prof| end_prof.min())
+    .unwrap()
 }
 
 #[derive(Debug, Enum, Clone, Copy)]
