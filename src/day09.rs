@@ -1,21 +1,46 @@
 use crate::util::isize;
 
+use itertools::Itertools;
 use nom::{IResult, character::complete::char, multi::separated_list1, sequence::terminated, combinator::eof};
 
 pub fn part1(lines: impl Iterator<Item=String>) -> isize {
   lines
     .map(|line| parse(line.as_str()).unwrap().1)
-    .map(|ns| {
-      let mut levels = vec![ns];
-      while !levels.last().unwrap().iter().all(|&n| n == 0) {
-        levels.push(levels.last().unwrap()
+    .map(|mut ns| {
+      let mut sum_lasts = 0;
+      loop {
+        sum_lasts += ns.last().copied().unwrap();
+        if ns.iter().all_equal() { break sum_lasts; }
+        ns = ns
           .windows(2)
           .map(|pair| pair[1] - pair[0])
-          .collect())
+          .collect();
       }
-      levels.into_iter()
-        .filter_map(|ns| ns.last().copied())
-        .sum::<isize>()//?
+    })
+    .sum()
+}
+
+pub fn part2(lines: impl Iterator<Item=String>) -> isize {
+  lines
+    .map(|line| parse(line.as_str()).unwrap().1)
+    .map(|mut ns| {
+      let mut sum_firsts = 0;
+      loop {
+        sum_firsts += ns.first().copied().unwrap();
+        if ns.iter().all_equal() { break sum_firsts; }
+        ns = ns
+          .windows(2)
+          .map(|pair| pair[1] - pair[0])
+          .collect();
+
+        // Negate every other
+        sum_firsts -= ns.first().copied().unwrap();
+        if ns.iter().all_equal() { break sum_firsts; }
+        ns = ns
+          .windows(2)
+          .map(|pair| pair[1] - pair[0])
+          .collect();
+      }
     })
     .sum()
 }
@@ -45,13 +70,13 @@ mod tests {
     assert_eq!(part1(sample_lines("09")), 1782868781);
   }
 
-  /*#[test]
+  #[test]
   fn test2_sample() {
-    assert_eq!(part2(sample_lines("09c")), 6);
+    assert_eq!(part2(sample_lines("09a")), 2);
   }
 
   #[test]
   fn test2() {
-    assert_eq!(part2(sample_lines("09")), 1);
-  }*/
+    assert_eq!(part2(sample_lines("09")), 1057);
+  }
 }
