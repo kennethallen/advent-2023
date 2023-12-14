@@ -19,7 +19,7 @@ fn process(lines: impl Iterator<Item=String>, jokers: bool) -> usize {
     .sum()
 }
 
-#[derive(PartialEq, Eq, PartialOrd, Ord, Enum, Debug, Clone, Copy)]
+#[derive(PartialEq, Eq, PartialOrd, Ord, Enum, Clone, Copy, Debug)]
 enum Card {
   Joker, Two, Three, Four, Five, Six, Seven, Eight, Nine, Ten, Jack, Queen, King, Ace,
 }

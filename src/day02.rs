@@ -17,12 +17,11 @@ pub fn part2(lines: impl Iterator<Item=String>) -> usize {
     .sum()
 }
 
-#[derive(Debug, Enum, Clone, Copy)]
+#[derive(Enum, Clone, Copy)]
 enum Color { Red, Green, Blue }
 
 type Round = EnumMap<Color, usize>;
 
-#[derive(Debug)]
 struct Game {
   id: usize,
   rounds: Vec<Round>,

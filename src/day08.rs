@@ -39,7 +39,7 @@ pub fn part1(file: String) -> usize {
   }
 }
 
-#[derive(Default, Debug, Clone)]
+#[derive(Default, Clone)]
 struct SparseRange {
   vals: HashSet<usize>,
   len: usize,
@@ -64,7 +64,7 @@ impl SparseRange {
   }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 struct CyclicSet {
   prefix: SparseRange,
   cycle: SparseRange,
@@ -146,7 +146,7 @@ pub fn part2(file: String) -> usize {
     .unwrap()
 }
 
-#[derive(Debug, Enum, Clone, Copy)]
+#[derive(Enum, Clone, Copy)]
 enum Dir {
   Left, Right,
 }

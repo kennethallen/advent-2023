@@ -51,7 +51,7 @@ fn parse_seed_ranges(input: &str) -> IResult<&str, Vec<Range>> {
 
 type Range = (usize, usize);
 
-#[derive(Default, Debug)]
+#[derive(Default)]
 struct Map {
   inner: BTreeMap<usize, Range>,
 }

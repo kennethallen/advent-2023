@@ -45,10 +45,9 @@ pub fn part2(lines: impl Iterator<Item=String>) -> usize {
 
 type Coord = (isize, isize);
 
-#[derive(Debug)]
 struct Number(Coord, usize);
 
-#[derive(Debug, Default)]
+#[derive(Default)]
 struct Schematic {
   nums: Vec<Number>,
   num_find: HashMap<Coord, usize>,

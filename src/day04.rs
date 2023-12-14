@@ -32,7 +32,6 @@ pub fn part2(lines: impl Iterator<Item=String>) -> usize {
   sum
 }
 
-#[derive(Debug)]
 struct Card {
   id: usize,
   winners: HashSet<usize>,
