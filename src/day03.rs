@@ -26,7 +26,7 @@ pub fn part2(lines: impl Iterator<Item=String>) -> usize {
 
   schem.syms.iter()
     .filter(|(_, &is_gear)| is_gear)
-    .flat_map(|(&(y, x), _)| -> Option<usize> {
+    .filter_map(|(&(y, x), _)| -> Option<usize> {
       let mut inc_nums = BitSet::with_capacity(schem.nums.len());
       for dy in -1..=1 {
         for dx in -1..=1 {
