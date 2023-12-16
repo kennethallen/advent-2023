@@ -1,25 +1,29 @@
 use std::cmp::min;
 
-use itertools::Itertools;
+use itertools::{Itertools, iproduct};
 use nom::{IResult, character::complete::{one_of, line_ending}, multi::{many1, separated_list1}, sequence::terminated, combinator::{eof, map, verify}};
 
-pub fn part1(file: String) -> usize {
+pub fn part1(file: String) -> usize { process(file, 0) }
+pub fn part2(file: String) -> usize { process(file, 1) }
+
+fn process(file: String, target_mistakes: usize) -> usize {
   parse(file.as_str()).unwrap().1.into_iter()
     .map(|pat| {
       (1..pat.len())
         .find(|&y|
-          (0..min(y, pat.len()-y))
-            .all(|off| pat[y+off] == pat[y-1-off])
+          iproduct!(0..min(y, pat.len()-y), 0..pat[0].len())
+            .filter(|&(off, x)| pat[y+off][x] != pat[y-1-off][x])
+            .take(target_mistakes + 1)
+            .count() == target_mistakes
         )
         .map(|y| y*100)
         .or_else(||
           (1..pat[0].len())
             .find(|&x|
-              (0..min(x, pat[0].len()-x))
-                .all(|off|
-                  pat.iter()
-                    .all(|row| row[x+off] == row[x-1-off])
-                )
+              iproduct!(0..min(x, pat[0].len()-x), &pat)
+                .filter(|&(off, row)| row[x+off] != row[x-1-off])
+                .take(target_mistakes + 1)
+                .count() == target_mistakes
             )
         )
         .unwrap()
@@ -59,5 +63,15 @@ mod tests {
   #[test]
   fn test1() {
     assert_eq!(part1(sample_file("13")), 30802);
+  }
+
+  #[test]
+  fn test2_sample() {
+    assert_eq!(part2(sample_file("13a")), 400);
+  }
+
+  #[test]
+  fn test2() {
+    assert_eq!(part2(sample_file("13")), 37876);
   }
 }
