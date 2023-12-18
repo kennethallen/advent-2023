@@ -1,38 +1,54 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, iter::once};
 
 use enum_map::{EnumMap, Enum};
 
 use crate::util::Coord;
 
 pub fn part1(lines: impl Iterator<Item=String>) -> usize {
-  let map: Vec<Vec<char>> = lines
-    .map(|line| line.chars().collect())
-    .collect();
+  process(&parse(lines), (0, 0), Dir::E)
+}
+pub fn part2(lines: impl Iterator<Item=String>) -> usize {
+  let map = parse(lines);
+  (0..map.len())
+    .flat_map(|y| once(((y, 0), Dir::E)).chain(once(((y, map[0].len()-1), Dir::W))))
+    .chain(
+      (0..map[0].len())
+        .flat_map(|x| once(((0, x), Dir::S)).chain(once(((map.len()-1, x), Dir::N))))
+    )
+    .map(|(pos, dir)| process(&map, pos, dir))
+    .max().unwrap()
+}
 
+fn parse(lines: impl Iterator<Item=String>) -> Vec<Vec<Tile>> {
+  lines
+    .map(|line| line.chars().map(Tile::try_parse).map(Option::unwrap).collect())
+    .collect()
+}
+
+fn process(map: &Vec<Vec<Tile>>, init_pos: Coord, init_dir: Dir) -> usize {
   let mut energized = HashMap::new();
-  energized.insert((0, 0), {
-    let mut east = EnumMap::default();
-    east[Dir::E] = true;
-    east
+  energized.insert(init_pos, {
+    let mut init_dirs = EnumMap::default();
+    init_dirs[init_dir] = true;
+    init_dirs
   });
-  let mut to_advance = vec![((0, 0), Dir::E)];
+  let mut to_advance = vec![(init_pos, init_dir)];
   while let Some((pos, dir)) = to_advance.pop() {
     let leave_dirs: &[Dir] = match (dir, map[pos.0][pos.1]) {
-      (Dir::E | Dir::W, '|') => &[Dir::N, Dir::S],
-      (Dir::N | Dir::S, '-') => &[Dir::E, Dir::W],
-      (Dir::E, '.' | '-') => &[Dir::E],
-      (Dir::N, '.' | '|') => &[Dir::N],
-      (Dir::W, '.' | '-') => &[Dir::W],
-      (Dir::S, '.' | '|') => &[Dir::S],
-      (Dir::E, '/') => &[Dir::N],
-      (Dir::N, '/') => &[Dir::E],
-      (Dir::W, '/') => &[Dir::S],
-      (Dir::S, '/') => &[Dir::W],
-      (Dir::E, '\\') => &[Dir::S],
-      (Dir::S, '\\') => &[Dir::E],
-      (Dir::W, '\\') => &[Dir::N],
-      (Dir::N, '\\') => &[Dir::W],
-      _ => panic!(),
+      (Dir::E | Dir::W, Tile::SplitNS) => &[Dir::N, Dir::S],
+      (Dir::N | Dir::S, Tile::SplitEW) => &[Dir::E, Dir::W],
+      (Dir::E, Tile::Empty | Tile::SplitEW) => &[Dir::E],
+      (Dir::N, Tile::Empty | Tile::SplitNS) => &[Dir::N],
+      (Dir::W, Tile::Empty | Tile::SplitEW) => &[Dir::W],
+      (Dir::S, Tile::Empty | Tile::SplitNS) => &[Dir::S],
+      (Dir::E, Tile::MirrorEN) => &[Dir::N],
+      (Dir::N, Tile::MirrorEN) => &[Dir::E],
+      (Dir::W, Tile::MirrorEN) => &[Dir::S],
+      (Dir::S, Tile::MirrorEN) => &[Dir::W],
+      (Dir::E, Tile::MirrorES) => &[Dir::S],
+      (Dir::S, Tile::MirrorES) => &[Dir::E],
+      (Dir::W, Tile::MirrorES) => &[Dir::N],
+      (Dir::N, Tile::MirrorES) => &[Dir::W],
     };
     for &leave_dir in leave_dirs {
       if let Some(new_pos) = try_step(pos, leave_dir, (map.len(), map[0].len())) {
@@ -52,7 +68,21 @@ pub fn part1(lines: impl Iterator<Item=String>) -> usize {
       }
     }
   }
-  dbg!(&energized);
+  /*for y in 0..map.len() {
+    for x in 0..map[0].len() {
+      print!("{}", match energized.get(&(y, x)) {
+        None => '.',
+        Some(dirs) => match dirs.iter().filter(|&(_, &v)| v).map(|(k, _)| k).exactly_one() {
+          Ok(Dir::E) => '>',
+          Ok(Dir::N) => '^',
+          Ok(Dir::W) => '<',
+          Ok(Dir::S) => 'v',
+          Err(_) => format!("{}", dirs.values().filter(|&&b| b).count()).chars().exactly_one().unwrap(),
+        }
+      });
+    }
+    println!();
+  }*/
   energized.len()
 }
 
@@ -69,6 +99,21 @@ fn try_step((y, x): Coord, dir: Dir, (max_y, max_x): Coord) -> Option<Coord> {
 #[derive(Enum, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Debug)]
 enum Dir { E, N, W, S }
 
+#[derive(Clone, Copy)]
+enum Tile { Empty, MirrorEN, MirrorES, SplitEW, SplitNS }
+
+impl Tile {
+  fn try_parse(c: char) -> Option<Self> {
+    match c {
+      '.' => Some(Self::Empty),
+      '|' => Some(Self::SplitNS),
+      '-' => Some(Self::SplitEW),
+      '/' => Some(Self::MirrorEN),
+      '\\' => Some(Self::MirrorES),
+      _ => None,
+    }
+  }
+}
 
 #[cfg(test)]
 mod tests {
@@ -85,13 +130,13 @@ mod tests {
     assert_eq!(part1(sample_lines("16")), 7185);
   }
 
-  /*#[test]
+  #[test]
   fn test2_sample() {
-    assert_eq!(part2(sample_lines("12a")), 525152);
+    assert_eq!(part2(sample_lines("16a")), 51);
   }
 
   #[test]
   fn test2() {
-    assert_eq!(part2(sample_lines("12")), 1493340882140);
-  }*/
+    assert_eq!(part2(sample_lines("16")), 7616);
+  }
 }

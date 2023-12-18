@@ -30,11 +30,10 @@ pub fn part2(file: String) -> usize {
 }
 
 fn hash(s: &str) -> u8 {
-  let mut h = 0;
+  let mut h: u8 = 0;
   for c in s.chars() {
     let c: u8 = c.try_into().unwrap();
-    h += c;
-    h *= 17;
+    h = h.overflowing_add(c).0.overflowing_mul(17).0;
   }
   h
 }
