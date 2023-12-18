@@ -17,8 +17,10 @@ pub fn part2(lines: impl Iterator<Item=String>) -> usize {
   let puzzles: Vec<_> = lines
     .map(|line| parse(line.as_str()).unwrap().1)
     .map(|(pat, runs)| {
-      let mut big_pat = pat.clone();
-      let mut big_runs = runs.clone();
+      let mut big_pat = Vec::with_capacity(pat.len() * 5 + 4);
+      big_pat.extend(&pat);
+      let mut big_runs = Vec::with_capacity(runs.len() * 5);
+      big_runs.extend(&runs);
       for _ in 0..4 {
         big_pat.push(None);
         big_pat.extend(&pat);

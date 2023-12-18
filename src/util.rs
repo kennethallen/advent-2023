@@ -13,3 +13,5 @@ pub fn isize(input: &str) -> IResult<&str, isize> {
     |n| n.try_into().unwrap(),
   )(input)
 }
+
+pub type Coord = (usize, usize);

@@ -4,6 +4,8 @@ use bit_vec::BitVec;
 use itertools::{Itertools, iproduct};
 use strum::{EnumIter, IntoEnumIterator};
 
+use crate::util::Coord;
+
 pub fn part1(lines: impl Iterator<Item=String>) -> usize {
   let (map, map_size, start) = prep(lines);
 
@@ -70,8 +72,6 @@ fn prep(lines: impl Iterator<Item=String>) -> (Vec<Vec<Tile>>, Coord, Coord) {
 
   (map, map_size, start)
 }
-
-type Coord = (usize, usize);
 
 #[derive(EnumIter, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
 enum Dir { E, N, W, S }

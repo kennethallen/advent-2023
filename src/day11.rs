@@ -2,6 +2,8 @@ use std::{collections::{BTreeSet, HashMap}, cmp::{min, max}};
 
 use itertools::Itertools;
 
+use crate::util::Coord;
+
 pub fn part1(lines: impl Iterator<Item=String>) -> usize { process(lines, 2) }
 pub fn part2(lines: impl Iterator<Item=String>) -> usize { process(lines, 1_000_000) }
 
@@ -43,8 +45,6 @@ fn multiply_gaps(sorted_ns: impl Iterator<Item=usize>, gap_mult: usize) -> HashM
     .map(|(i, n)| (n, (n - i)*gap_mult + i))
     .collect()
 }
-
-type Coord = (usize, usize);
 
 #[cfg(test)]
 mod tests {
