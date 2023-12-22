@@ -1,5 +1,6 @@
 #![feature(btree_cursors)]
 #![feature(map_try_insert)]
+#![feature(let_chains)]
 
 mod util;
 

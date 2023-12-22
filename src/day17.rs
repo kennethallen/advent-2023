@@ -2,7 +2,10 @@ use std::{collections::{BinaryHeap, HashMap}, cmp::Ordering};
 
 use crate::util::Coord;
 
-pub fn part1(lines: impl Iterator<Item=String>) -> usize {
+pub fn part1(lines: impl Iterator<Item=String>) -> usize { process(lines, 1, 3) }
+pub fn part2(lines: impl Iterator<Item=String>) -> usize { process(lines, 4, 10) }
+
+fn process(lines: impl Iterator<Item=String>, min_run: u8, max_run: u8) -> usize {
   let map: Vec<Vec<u8>> = lines
     .map(|line| line.chars()
       .map(|c| c.to_digit(10).unwrap().try_into().unwrap())
@@ -12,15 +15,11 @@ pub fn part1(lines: impl Iterator<Item=String>) -> usize {
   let bounds = (map.len(), map[0].len());
   let dest = (bounds.0-1, bounds.1-1);
   let mut seen = HashMap::new();
-  let mut to_explore = BinaryHeap::from([State {
-    //prev: (usize::MAX, usize::MAX),
-    pos: (0, 0),
-    face: Dir::E,
-    run: 0,
-    heat_loss: 0,
-  }]);
-  let x = loop {
+  let mut to_explore = BinaryHeap::from([State::default()]);
+  loop {
     let state = to_explore.pop().unwrap();
+    if state.pos == dest { break state.heat_loss; }
+
     if let Err(mut e) = seen.try_insert((state.pos, state.face), state.run) {
       let old_state = e.entry.get_mut();
       if *old_state <= state.run {
@@ -28,48 +27,32 @@ pub fn part1(lines: impl Iterator<Item=String>) -> usize {
       }
       *old_state = e.value;
     }
-    //println!("{:?} {:?}", state.pos, state.prev);
-    if state.pos == dest { break state.heat_loss; }
-    let next_dirs = match state.face {
-      Dir::E => [Dir::N, Dir::E, Dir::S],
-      Dir::N => [Dir::W, Dir::N, Dir::E],
-      Dir::W => [Dir::S, Dir::W, Dir::N],
-      Dir::S => [Dir::E, Dir::S, Dir::W],
-    };
-    for face in next_dirs {
-      if let Some(pos) = try_step(state.pos, face, bounds) {
-        let run = if face == state.face { state.run + 1 } else { 1 };
-        if run <= 3 {
-          to_explore.push(State { pos, face, run, 
-            //prev: state.pos, 
-            heat_loss: state.heat_loss + usize::from(map[pos.0][pos.1]),
-          })
-        }
+
+    'try_turn: for face in [state.face.turn_ccw(), state.face.turn_cw()] {
+      let mut heat_loss = state.heat_loss;
+      let mut pos = state.pos;
+      for _ in 0..min_run {
+        pos = if let Some(pos) = try_step(pos, face, bounds) { pos } else { continue 'try_turn };
+        heat_loss += usize::from(map[pos.0][pos.1]);
       }
+      to_explore.push(State { pos, face, heat_loss, run: min_run });
     }
-  };
-  //let mut curs = seen.get(&dest);
-  //let mut path = HashSet::new();
-  //while let Some(state) = curs {
-    //path.insert(state.pos);
-    //curs = seen.get(&state.prev);
-  //}
-  //for y in 0..bounds.0 {
-    //for x in 0..bounds.1 {
-      //print!("{}", if path.contains(&(y, x)) { '#' } else { '.' });
-    //}
-    //println!();
-  //}
-  x
+    if state.run < max_run && let Some(pos) = try_step(state.pos, state.face, bounds) {
+      to_explore.push(State { pos,
+        face: state.face,
+        run: state.run + 1, 
+        heat_loss: state.heat_loss + usize::from(map[pos.0][pos.1]),
+      });
+    }
+  }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 struct State {
   pos: Coord,
   face: Dir,
   run: u8,
   heat_loss: usize,
-  //prev: Coord,
 }
 
 impl PartialEq for State {
@@ -102,8 +85,28 @@ fn try_step((y, x): Coord, dir: Dir, (max_y, max_x): Coord) -> Option<Coord> {
   }
 }
 
-#[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Debug, Hash)]
-enum Dir { E, N, W, S }
+#[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Debug, Hash, Default)]
+enum Dir { #[default] E, N, W, S }
+
+impl Dir {
+  fn turn_ccw(&self) -> Self {
+    match self {
+      Self::E => Self::N,
+      Self::N => Self::W,
+      Self::W => Self::S,
+      Self::S => Self::E,
+    }
+  }
+
+  fn turn_cw(&self) -> Self {
+    match self {
+      Self::E => Self::S,
+      Self::N => Self::E,
+      Self::W => Self::N,
+      Self::S => Self::W,
+    }
+  }
+}
 
 #[cfg(test)]
 mod tests {
@@ -120,13 +123,14 @@ mod tests {
     assert_eq!(part1(sample_lines("17")), 1023);
   }
 
-  /*#[test]
+  #[test]
   fn test2_sample() {
-    assert_eq!(part2(sample_lines("17a")), 51);
+    assert_eq!(part2(sample_lines("17a")), 94);
+    assert_eq!(part2(sample_lines("17b")), 71);
   }
 
   #[test]
   fn test2() {
-    assert_eq!(part2(sample_lines("17")), 7616);
-  }*/
+    assert_eq!(part2(sample_lines("17")), 1165);
+  }
 }
