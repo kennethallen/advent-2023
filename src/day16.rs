@@ -96,7 +96,7 @@ fn try_step((y, x): Coord, dir: Dir, (max_y, max_x): Coord) -> Option<Coord> {
   }
 }
 
-#[derive(Enum, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Debug)]
+#[derive(Enum, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
 enum Dir { E, N, W, S }
 
 #[derive(Clone, Copy)]
