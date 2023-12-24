@@ -1,8 +1,8 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, ops::RangeInclusive, cmp::{max, min}};
 
 use crate::util::usize;
 
-use enum_map::{EnumMap, Enum};
+use enum_map::{EnumMap, Enum, enum_map};
 use nom::{IResult, character::complete::{char, line_ending, one_of}, multi::{many0, many1, separated_list1}, sequence::{terminated, pair, separated_pair, delimited}, combinator::{eof, map, value}, bytes::complete::take_while, branch::alt};
 
 pub fn part1(file: String) -> usize {
@@ -23,6 +23,14 @@ pub fn part1(file: String) -> usize {
     .sum()
 }
 
+pub fn part2(file: String) -> usize {
+  let (workflows, _) = parse(file.as_str()).unwrap().1;
+  workflows["in"].count_acceptances(
+    enum_map! { _ => 1..=4000 },
+    |tag| &workflows[tag],
+  )
+}
+
 #[derive(Clone, Copy)]
 enum Dest<'a> {
   Accept,
@@ -37,6 +45,14 @@ impl<'a> Dest<'a> {
       value(Self::Reject, char('R')),
       map(parse_name, |tag| Self::Continue(tag)),
     ))(input)
+  }
+
+  fn count_acceptances(&self, part_spec: PartSpec, workflow_lookup: impl Copy + Fn(&'a str) -> &Workflow<'a>) -> usize {
+    match self {
+      Self::Reject => 0,
+      Self::Accept => part_spec.into_values().map(|r| r.end() - r.start() + 1).product(),
+      Self::Continue(tag) => workflow_lookup(tag).count_acceptances(part_spec, workflow_lookup),
+    }
   }
 }
 
@@ -76,6 +92,22 @@ impl Cond {
       part[self.qual] < self.thresh
     }
   }
+
+  fn split(&self, mut spec: PartSpec) -> (Option<PartSpec>, Option<PartSpec>) {
+    let mut spec_alt = spec.clone();
+    let (start, end) = spec[self.qual].clone().into_inner();
+    if self.high_pass {
+      (
+        if end > self.thresh { spec[self.qual] = max(start, self.thresh+1)..=end; Some(spec) } else { None },
+        if start <= self.thresh { spec_alt[self.qual] = start..=min(end, self.thresh); Some(spec_alt) } else { None },
+      )
+    } else {
+      (
+        if start < self.thresh { spec[self.qual] = start..=min(end, self.thresh-1); Some(spec) } else { None },
+        if end >= self.thresh { spec_alt[self.qual] = max(start, self.thresh)..=end; Some(spec_alt) } else { None },
+      )
+    }
+  }
 }
 
 struct Workflow<'a> {
@@ -103,9 +135,26 @@ impl<'a> Workflow<'a> {
       .map(|&(_, dest)| dest)
       .unwrap_or(self.fallback)
   }
+
+  fn count_acceptances(&self, mut part_spec: PartSpec, workflow_lookup: impl Copy + Fn(&'a str) -> &Workflow<'a>) -> usize {
+    let mut sum = 0;
+    for (cond, dest) in &self.steps {
+      let (pass, fail) = cond.split(part_spec);
+      if let Some(pass) = pass {
+        sum += dest.count_acceptances(pass, workflow_lookup);
+      }
+      if let Some(fail) = fail {
+        part_spec = fail;
+      } else {
+        return sum;
+      }
+    }
+    sum + self.fallback.count_acceptances(part_spec, workflow_lookup)
+  }
 }
 
 type Part = EnumMap<Qual, usize>;
+type PartSpec = EnumMap<Qual, RangeInclusive<usize>>;
 
 fn parse_part(input: &str) -> IResult<&str, Part> {
   let (input, quals) = separated_list1(
@@ -163,5 +212,15 @@ mod tests {
   #[test]
   fn test1() {
     assert_eq!(part1(sample_file("19")), 368964);
+  }
+
+  #[test]
+  fn test2_sample() {
+    assert_eq!(part2(sample_file("19a")), 167409079868000);
+  }
+
+  #[test]
+  fn test2() {
+    assert_eq!(part2(sample_file("19")), 127675188176682);
   }
 }
