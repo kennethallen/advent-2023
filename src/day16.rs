@@ -57,8 +57,8 @@ fn process(map: &Vec<Vec<Tile>>, init_pos: Coord, init_dir: Dir) -> usize {
             dirs[leave_dir] = true;
             to_advance.push((new_pos, leave_dir));
           },
-          Err(mut e) => {
-            let dirs = e.entry.get_mut();
+          Err(e) => {
+            let dirs = e.entry.into_mut();
             if !dirs[leave_dir] {
               dirs[leave_dir] = true;
               to_advance.push((new_pos, leave_dir));
