@@ -1,7 +1,8 @@
-use std::{iter::zip, num::ParseIntError};
+use std::num::ParseIntError;
 
 use crate::util::usize;
 
+use itertools::Itertools;
 use nom::{IResult, character::complete::{char, line_ending, digit1}, bytes::complete::tag, multi::many1, sequence::{delimited, preceded, terminated, pair}, combinator::{eof, verify, map_res, map}};
 
 pub fn part1(file: String) -> usize { process(file, parse_num_list) }
@@ -47,7 +48,7 @@ fn parse(input: &str, parse_nums: impl Fn(&str) -> IResult<&str, Vec<usize>>) ->
       ),
       |(times, dists)| times.len() == dists.len(),
     ),
-    |(times, dists)| zip(times, dists).collect(),
+    |(times, dists)| times.into_iter().zip_eq(dists).collect(),
   )(input)
 }
 

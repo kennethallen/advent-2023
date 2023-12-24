@@ -1,6 +1,6 @@
 use std::mem::swap;
 
-use bit_vec::BitVec;
+use bitvec::prelude::*;
 use itertools::{Itertools, iproduct};
 use strum::{EnumIter, IntoEnumIterator};
 
@@ -25,7 +25,7 @@ pub fn part1(lines: impl Iterator<Item=String>) -> usize {
 pub fn part2(lines: impl Iterator<Item=String>) -> usize {
   let (map, map_size, _) = prep(lines);
 
-  let mut interpoints = vec![BitVec::from_elem(map[0].len() + 1, false); map.len() + 1];
+  let mut interpoints = vec![bitvec![0; map[0].len() + 1]; map.len() + 1];
   let interpoints_size = (map_size.0 + 1, map_size.1 + 1);
   interpoints[0].set(0, true);
   let mut to_visit = vec![(0, 0)];
