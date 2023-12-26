@@ -1,0 +1,170 @@
+digraph D {
+rx [shape=square]
+xx [shape=diamond]
+qk [shape=diamond]
+tl [shape=diamond]
+vr [shape=diamond]
+xl [shape=diamond]
+rd [shape=diamond]
+tv [shape=diamond]
+bt [shape=diamond]
+hj [shape=diamond]
+ql [shape=triangle]
+gz [shape=diamond]
+tn [shape=diamond]
+kb [shape=diamond]
+hl [shape=triangle]
+mf [shape=triangle]
+mq [shape=diamond]
+rm [shape=diamond]
+js [shape=diamond]
+nl [shape=diamond]
+sn [shape=triangle]
+hs [shape=diamond]
+gk [shape=diamond]
+fz [shape=triangle]
+dc [shape=diamond]
+ng [shape=diamond]
+tm [shape=diamond]
+jg [shape=diamond]
+vp [shape=diamond]
+dp [shape=diamond]
+zj [shape=diamond]
+fp [shape=diamond]
+tf [shape=triangle]
+nc [shape=diamond]
+fh [shape=triangle]
+xb [shape=diamond]
+hm [shape=diamond]
+cb [shape=diamond]
+px [shape=diamond]
+broadcaster [shape=circle]
+lr [shape=triangle]
+xv [shape=diamond]
+fl [shape=diamond]
+hq [shape=diamond]
+qn [shape=diamond]
+gr [shape=diamond]
+lb [shape=diamond]
+th [shape=diamond]
+bq [shape=diamond]
+hb [shape=diamond]
+vf [shape=diamond]
+gx [shape=diamond]
+xd [shape=diamond]
+ss [shape=triangle]
+kg [shape=diamond]
+sd [shape=diamond]
+nj [shape=diamond]
+td [shape=diamond]
+qb [shape=diamond]
+xx -> hb
+qk -> hs
+qk -> hl
+tl -> kg
+vr -> tf
+vr -> hq
+xl -> gx
+xl -> lr
+rd -> xl
+rd -> lr
+tv -> sn
+bt -> xd
+bt -> sn
+hj -> lr
+hj -> bq
+ql -> rx
+gz -> tf
+tn -> sn
+tn -> tv
+kb -> mq
+hl -> nj
+hl -> lb
+hl -> tl
+hl -> xx
+hl -> hb
+hl -> fp
+hl -> mf
+mf -> ql
+mq -> tf
+mq -> fl
+rm -> hj
+js -> lr
+js -> dc
+nl -> bt
+sn -> sd
+sn -> fh
+sn -> th
+sn -> qb
+sn -> nl
+sn -> ng
+sn -> nc
+hs -> fp
+hs -> hl
+gk -> hm
+fz -> ql
+dc -> dp
+ng -> vp
+ng -> sn
+tm -> hl
+jg -> qn
+vp -> vf
+vp -> sn
+dp -> xv
+zj -> vr
+fp -> xb
+tf -> cb
+tf -> jg
+tf -> fz
+tf -> gr
+tf -> zj
+tf -> qn
+tf -> kb
+nc -> sd
+fh -> ql
+xb -> hl
+xb -> tl
+hm -> lr
+hm -> rd
+cb -> jg
+px -> hl
+px -> tm
+broadcaster -> js
+broadcaster -> ng
+broadcaster -> lb
+broadcaster -> gr
+lr -> ss
+lr -> rm
+lr -> dc
+lr -> js
+lr -> gk
+lr -> dp
+lr -> bq
+xv -> rm
+xv -> lr
+fl -> tf
+fl -> gz
+hq -> kb
+hq -> tf
+qn -> td
+gr -> tf
+gr -> cb
+lb -> nj
+lb -> hl
+th -> qb
+bq -> gk
+hb -> qk
+vf -> th
+vf -> sn
+gx -> lr
+xd -> tn
+xd -> sn
+ss -> ql
+kg -> px
+kg -> hl
+sd -> nl
+nj -> xx
+td -> tf
+td -> zj
+qb -> nc
+}
