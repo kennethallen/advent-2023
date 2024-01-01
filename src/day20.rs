@@ -55,7 +55,7 @@ pub fn part2(lines: impl Iterator<Item=String>) -> usize {
   let lines: Vec<_> = lines.collect();
   let (mut mods, backrefs) = parse(lines.iter());
 
-  println!("digraph D {{");
+  /*println!("digraph D {{");
   println!("rx [shape=square]");
   for (&name, module) in &mods {
     println!("{} [shape={}]", name, match module.logic {
@@ -69,7 +69,7 @@ pub fn part2(lines: impl Iterator<Item=String>) -> usize {
       println!("{} -> {}", name, dest);
     }
   }
-  println!("}}");
+  println!("}}");*/
 
   let mut pulses = VecDeque::new();
   let mut presses = 0;
