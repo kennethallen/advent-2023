@@ -5,139 +5,156 @@ use crate::util::usize;
 use itertools::Itertools;
 use nom::{IResult, character::complete::char, multi::separated_list1, combinator::{map_res, map}, sequence::separated_pair};
 
-/*fn assert_invariants(bricks: &Vec<Brick>, cols: &HashMap<[usize; 2], Vec<usize>>, unsupported: &HashSet<usize>) {
-  for (i, brick) in bricks.iter().enumerate() {
-    assert!(brick.pos[2] > 0);
-
-    for (j, b1) in bricks.iter().enumerate() {
-      assert_eq!(i == j, brick.intersects(&b1), "{} {:?}\n{} {:?}", i, brick, j, b1);
-    }
-
-    for &supporter in &bricks[i].supported_by {
-      assert!(bricks[supporter].supports.contains(&i), "{} {:?}\n{} {:?}", i, brick, supporter, &bricks[supporter]);
-      assert_eq!(bricks[supporter].max_z() + 1, brick.pos[2]);
-    }
-    for &supportee in &bricks[i].supports {
-      assert!(bricks[supportee].supported_by.contains(&i));
-      assert_eq!(bricks[supportee].pos[2], brick.max_z() + 1);
-    }
-  }
-
-  for col in cols.values() {
-    assert!(col.iter().map(|&i| bricks[i].pos[2]).is_sorted());
-  }
-}*/
-
 pub fn part1(lines: impl Iterator<Item=String>) -> usize {
-  let mut bricks: Vec<_> = lines.map(|line| Brick::parse(line.as_str()).unwrap().1).collect();
-
-  let mut cols = HashMap::new();
-  for (i, brick) in bricks.iter().enumerate() {
-    for xz in brick.iter_xys() {
-      (match cols.try_insert(xz, vec![]) {
-        Ok(v) => v,
-        Err(e) => e.entry.into_mut(),
-      }).push(i);
-    }
-  }
-  for col in cols.values_mut() {
-    col.sort_by_key(|&i| bricks[i].pos[2]);
-  }
-  let cols = cols;
-
-  let mut unsupported: HashSet<_> = bricks.iter().positions(Brick::can_fall).collect();
-  for pair in cols.values().flat_map(|col| col.windows(2)) {
-    let lo = pair[0];
-    let hi = pair[1];
-    if bricks[lo].just_beneath(&bricks[hi]) {
-      bricks[lo].supports.insert(hi);
-      bricks[hi].supported_by.insert(lo);
-      unsupported.remove(&hi);
-    }
-  }
-
-  //assert_invariants(&bricks, &cols, &unsupported);
-  while let Some(&unsup) = unsupported.iter().next() {
-    unsupported.remove(&unsup);
-    debug_assert!(bricks[unsup].can_fall());
-
-    // Find y to drop to
-    let mut floor = 0;
-    let mut sups = HashSet::new();
-    for xy in bricks[unsup].iter_xys() {
-      let col = &cols[&xy];
-      let col_i = col.iter().position(|&n| n == unsup).unwrap();
-      if col_i > 0 {
-        let below = col[col_i - 1];
-        let new_floor = bricks[below].max_z();
-        match new_floor.cmp(&floor) {
-          Ordering::Greater => {
-            floor = new_floor;
-            sups.clear();
-            sups.insert(below);
-          },
-          Ordering::Equal => { sups.insert(below); },
-          Ordering::Less => (),
-        }
-      }
-    }
-    debug_assert!(floor < bricks[unsup].pos[2]);
-    debug_assert_eq!(floor == 0, sups.is_empty());
-
-    // Remove old supports
-    while let Some(&supportee) = bricks[unsup].supports.iter().next() {
-      bricks[unsup].supports.remove(&supportee);
-      bricks[supportee].supported_by.remove(&unsup);
-      if bricks[supportee].can_fall() {
-        unsupported.insert(supportee);
-      }
-    }
-
-    // Move and add new supports
-    bricks[unsup].pos[2] = floor + 1;
-    for &sup in &sups {
-      bricks[sup].supports.insert(unsup);
-    }
-    bricks[unsup].supported_by = sups;
-
-    //assert_invariants(&bricks, &cols, &unsupported);
-  }
-
-  /*for z in (0..=6).rev() {
-    for x in 0..=2 {
-      let bs: Vec<_> = bricks.iter().positions(|b| b.intersects_subspace([Some(x), None, Some(z)])).collect();
-      print!("{}", match bs.len() {
-        0 => '.',
-        1 => ['A', 'B', 'C', 'D', 'E', 'F', 'G'][bs[0]],
-        _ => '?',
-      });
-    }
-    println!();
-  }
-  println!();
-
-  for z in (0..=6).rev() {
-    for y in 0..=2 {
-      let bs: Vec<_> = bricks.iter().positions(|b| b.intersects_subspace([None, Some(y), Some(z)])).collect();
-      print!("{}", match bs.len() {
-        0 => '.',
-        1 => ['A', 'B', 'C', 'D', 'E', 'F', 'G'][bs[0]],
-        _ => '?',
-      });
-    }
-    println!();
-  }
-  println!();*/
-
-  bricks.iter()
+  let mut state = State::parse(lines);
+  state.settle();
+  state.bricks.iter()
     .filter(|&brick|
-      brick.supports.iter().all(|&other| bricks[other].supported_by.len() > 1))
+      brick.supports.iter().all(|&other| state.bricks[other].supported_by.len() > 1))
     .count()
+}
+
+pub fn part2(lines: impl Iterator<Item=String>) -> usize {
+  let mut state = State::parse(lines);
+  state.settle();
+  (0..state.bricks.len())
+    .map(|i| {
+      let mut scen = state.clone();
+      scen.vaporize(i);
+      scen.settle().len()
+    })
+    .sum()
 }
 
 type Coord = [usize; 3];
 
-#[derive(Debug)]
+#[derive(Clone)]
+struct State {
+  bricks: Vec<Brick>,
+  cols: HashMap<[usize; 2], Vec<usize>>,
+  unsupported: HashSet<usize>,
+}
+
+impl State {
+  fn parse(lines: impl Iterator<Item=String>) -> Self {
+    let mut bricks: Vec<_> = lines.map(|line| Brick::parse(line.as_str()).unwrap().1).collect();
+
+    let mut cols = HashMap::new();
+    for (i, brick) in bricks.iter().enumerate() {
+      for xz in brick.iter_xys() {
+        (match cols.try_insert(xz, vec![]) {
+          Ok(v) => v,
+          Err(e) => e.entry.into_mut(),
+        }).push(i);
+      }
+    }
+    for col in cols.values_mut() {
+      col.sort_by_key(|&i| bricks[i].pos[2]);
+    }
+    let cols = cols;
+
+    for pair in cols.values().flat_map(|col| col.windows(2)) {
+      let lo = pair[0];
+      let hi = pair[1];
+      if bricks[lo].just_beneath(&bricks[hi]) {
+        bricks[lo].supports.insert(hi);
+        bricks[hi].supported_by.insert(lo);
+      }
+    }
+    let unsupported: HashSet<_> = bricks.iter().positions(Brick::can_fall).collect();
+    
+    Self { bricks, cols, unsupported }
+  }
+
+  fn settle(&mut self) -> HashSet<usize> {
+    let mut drops = self.unsupported.clone();
+    while let Some(&unsup) = self.unsupported.iter().next() {
+      self.unsupported.remove(&unsup);
+      debug_assert!(self.bricks[unsup].can_fall());
+
+      // Find y to drop to
+      let mut floor = 0;
+      let mut sups = HashSet::new();
+      for xy in self.bricks[unsup].iter_xys() {
+        let col = &self.cols[&xy];
+        let col_i = col.iter().position(|&n| n == unsup).unwrap();
+        if col_i > 0 {
+          let below = col[col_i - 1];
+          let new_floor = self.bricks[below].max_z();
+          match new_floor.cmp(&floor) {
+            Ordering::Greater => {
+              floor = new_floor;
+              sups.clear();
+              sups.insert(below);
+            },
+            Ordering::Equal => { sups.insert(below); },
+            Ordering::Less => (),
+          }
+        }
+      }
+      debug_assert!(floor < self.bricks[unsup].pos[2]);
+      debug_assert_eq!(floor == 0, sups.is_empty());
+
+      // Remove old supports
+      while let Some(&supportee) = self.bricks[unsup].supports.iter().next() {
+        self.bricks[unsup].supports.remove(&supportee);
+        self.bricks[supportee].supported_by.remove(&unsup);
+        if self.bricks[supportee].can_fall() {
+          self.unsupported.insert(supportee);
+          drops.insert(supportee);
+        }
+      }
+
+      // Move and add new supports
+      self.bricks[unsup].pos[2] = floor + 1;
+      for &sup in &sups {
+        self.bricks[sup].supports.insert(unsup);
+      }
+      self.bricks[unsup].supported_by = sups;
+    }
+    drops
+  }
+
+  fn vaporize(&mut self, vap_i: usize) {
+    // Remove vaporized brick
+    let vap = self.bricks.swap_remove(vap_i);
+    let new_i = vap_i;
+    let old_i = self.bricks.len();
+
+    for xy in vap.iter_xys() {
+      let col = self.cols.get_mut(&xy).unwrap();
+      col.remove(col.iter().position(|&i| i == vap_i).unwrap());
+    }
+    for &supporter in &vap.supported_by {
+      let supporter = if supporter == old_i { new_i } else { supporter };
+      self.bricks[supporter].supports.remove(&vap_i);
+    }
+    for &supported in &vap.supports {
+      let supported = if supported == old_i { new_i } else { supported };
+      self.bricks[supported].supported_by.remove(&vap_i);
+      if self.bricks[supported].can_fall() { self.unsupported.insert(supported); }
+    }
+
+    // Reassign reused index
+    if old_i != new_i {
+      for xy in self.bricks[new_i].iter_xys() {
+        let col = self.cols.get_mut(&xy).unwrap();
+        let col_i = col.iter().position(|&i| i == old_i).unwrap();
+        col[col_i] = new_i;
+      }
+      for supporter in self.bricks[new_i].supported_by.clone() {
+        self.bricks[supporter].supports.remove(&old_i);
+        self.bricks[supporter].supports.insert(new_i);
+      }
+      for supported in self.bricks[new_i].supports.clone() {
+        self.bricks[supported].supported_by.remove(&old_i);
+        self.bricks[supported].supported_by.insert(new_i);
+      }
+    }
+  }
+}
+
+#[derive(Clone, Debug)]
 struct Brick {
   pos: Coord,
   len: usize,
@@ -162,31 +179,6 @@ impl Brick {
 
   fn max_z(&self) -> usize {
     if self.dim == 2 { self.pos[2] + self.len - 1 } else { self.pos[2] }
-  }
-
-  fn intersects_subspace(&self, pat: [Option<usize>; 3]) -> bool {
-    (0..self.pos.len()).all(|dim|
-      match pat[dim] {
-        Some(spec) => 
-          if dim == self.dim {
-            spec >= self.pos[dim] && spec < self.pos[dim] + self.len
-          } else {
-            spec == self.pos[dim]
-          },
-        None => true,
-      }
-    )
-  }
-
-  fn intersects(&self, other: &Self) -> bool {
-    (0..self.pos.len()).all(|dim|
-      match (dim == self.dim, dim == other.dim) {
-        (true, true) => self.pos[dim] < other.pos[dim] + other.len && self.pos[dim] + self.len > other.pos[dim],
-        (true, false) => self.pos[dim] <= other.pos[dim] && self.pos[dim] + self.len > other.pos[dim],
-        (false, true) => other.pos[dim] <= self.pos[dim] && other.pos[dim] + other.len > self.pos[dim],
-        (false, false) => self.pos[dim] == other.pos[dim],
-      }
-    )
   }
 
   fn can_fall(&self) -> bool {
@@ -225,5 +217,15 @@ mod tests {
   #[test]
   fn test1() {
     assert_eq!(part1(sample_lines("22")), 522);
+  }
+
+  #[test]
+  fn test2_sample() {
+    assert_eq!(part2(sample_lines("22a")), 7);
+  }
+
+  #[test]
+  fn test2() {
+    assert_eq!(part2(sample_lines("22")), 83519);
   }
 }
