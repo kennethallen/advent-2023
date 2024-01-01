@@ -1,6 +1,7 @@
 #![feature(btree_cursors)]
-#![feature(map_try_insert)]
+#![feature(is_sorted)]
 #![feature(let_chains)]
+#![feature(map_try_insert)]
 
 mod util;
 
@@ -28,3 +29,4 @@ pub mod day18;
 pub mod day19;
 pub mod day20;
 pub mod day21;
+pub mod day22;
