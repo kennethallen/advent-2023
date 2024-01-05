@@ -1,5 +1,6 @@
 use std::{collections::{HashSet, HashMap}, mem::take, iter::once};
 
+use arrayvec::ArrayVec;
 use bit_set::BitSet;
 use itertools::Itertools;
 use strum::{EnumIter, IntoEnumIterator};
@@ -44,8 +45,8 @@ fn process(lines: impl Iterator<Item=String>, ignore_slopes: bool) -> usize {
     }
   }
 
-  let start_node = lookup[&start];
-  let end_node = lookup[&end];
+  let start = lookup[&start];
+  let end = lookup[&end];
 
   for (&pos, &node) in &lookup {
     for dir in map[pos.0][pos.1].possible_exits(ignore_slopes) {
@@ -57,16 +58,15 @@ fn process(lines: impl Iterator<Item=String>, ignore_slopes: bool) -> usize {
     }
   }
 
+  let mut alive: BitSet = (0..nodes.len()).collect();
   let mut to_fix: Vec<_> = (0..nodes.len()).collect();
   while let Some(node) = to_fix.pop() {
-    println!("Considering {} {:?}", node, &nodes[node]);
     debug_assert!(nodes[node].ins.iter().all(|&in_node| nodes[in_node].outs.contains_key(&node)));
     debug_assert!(nodes[node].outs.keys().all(|&out| nodes[out].ins.contains(&node)));
-    if node == start_node || node == end_node { continue; }
+    if node == start || node == end { continue; }
     if match nodes[node].outs.len() {
       0 => {
         // Remove dead end
-        println!("Removing dead end");
         for nbr in take(&mut nodes[node].ins) {
           nodes[nbr].outs.remove(&node).unwrap();
           to_fix.push(nbr);
@@ -74,10 +74,10 @@ fn process(lines: impl Iterator<Item=String>, ignore_slopes: bool) -> usize {
         true
       },
       1 => {
-        println!("Redirecting ins to single out");
         // Redirect ins to single out
         let (next, d0) = take(&mut nodes[node].outs).into_iter().exactly_one().unwrap();
-        assert!(nodes[next].ins.remove(&node));
+        let rem = nodes[next].ins.remove(&node);
+        debug_assert!(rem);
         for nbr in take(&mut nodes[node].ins) {
           let d1 = nodes[nbr].outs.remove(&node).unwrap();
           if nbr == next {
@@ -91,30 +91,35 @@ fn process(lines: impl Iterator<Item=String>, ignore_slopes: bool) -> usize {
               }
               debug_assert!(nodes[next].ins.contains(&nbr));
             } else {
-              assert!(nodes[next].ins.insert(nbr));
+              let rem = nodes[next].ins.insert(nbr);
+              debug_assert!(rem);
             }
           }
         }
         true
       },
       2 => {
-        println!("Considering simplifying corridor");
         if nodes[node].ins.len() == 2 && nodes[node].outs.keys().all(|&out| nodes[node].ins.contains(&out)) {
-          println!("Simplifying corridor");
           // Simplify corridor
           let mut iter = take(&mut nodes[node].outs).into_iter();
           let ((nbr0, dn0), (nbr1, dn1)) = iter.next_tuple().unwrap();
-          assert!(iter.is_empty());
+          debug_assert!(iter.is_empty());
 
           let d0n = nodes[nbr0].outs.remove(&node).unwrap();
-          assert_eq!(nodes[nbr0].outs.insert(nbr1, d0n + dn1), None);
-          assert!(nodes[nbr0].ins.remove(&node));
-          assert!(nodes[nbr0].ins.insert(nbr1));
+          let ins = nodes[nbr0].outs.insert(nbr1, d0n + dn1);
+          debug_assert_eq!(ins, None);
+          let rem = nodes[nbr0].ins.remove(&node);
+          debug_assert!(rem);
+          let ins = nodes[nbr0].ins.insert(nbr1);
+          debug_assert!(ins);
 
           let d1n = nodes[nbr1].outs.remove(&node).unwrap();
-          assert_eq!(nodes[nbr1].outs.insert(nbr0, d1n + dn0), None);
-          assert!(nodes[nbr1].ins.remove(&node));
-          assert!(nodes[nbr1].ins.insert(nbr0));
+          let ins = nodes[nbr1].outs.insert(nbr0, d1n + dn0);
+          debug_assert_eq!(ins, None);
+          let rem = nodes[nbr1].ins.remove(&node);
+          debug_assert!(rem);
+          let ins = nodes[nbr1].ins.insert(nbr0);
+          debug_assert!(ins);
 
           true
         } else {
@@ -123,29 +128,26 @@ fn process(lines: impl Iterator<Item=String>, ignore_slopes: bool) -> usize {
       },
       _ => false,
     } {
-      // Reassign end node idx
-      // TODO actually compact
-      nodes[node].ins.clear();
-      nodes[node].outs.clear();
+      alive.remove(node);
     }
   }
 
-  for (i, node) in nodes.iter().enumerate() {
-    if node.ins.is_empty() {
-      assert!(node.outs.is_empty());
-    } else {
-      println!("{} {:?}", i, node);
-    }
-  }
-  panic!();
+  let translation: HashMap<_, _> = alive.iter().enumerate().map(|(i, node)| (node, i)).collect();
+  let start = translation[&start];
+  let end = translation[&end];
+  let nodes: Vec<HashMap<_, _>> = alive.into_iter()
+    .map(|node|
+      nodes[node].outs.iter().map(|(&out, &dist)| (translation[&out], dist))
+      .collect())
+    .collect();
 
   let mut max_dist = 0;
-  let mut paths: Vec<(_, BitSet, _)> = vec![(start_node, once(start_node).collect(), 0)];
+  let mut paths: Vec<(_, BitSet, _)> = vec![(start, once(start).collect(), 0)];
   while let Some((pos, mut visited, dist)) = paths.pop() {
-    if pos == end_node {
+    if pos == end {
       if dist > max_dist { max_dist = dist; }
     } else {
-      let mut using_outs: Vec<_> = nodes[pos].outs.iter()
+      let mut using_outs: ArrayVec<_, 3> = nodes[pos].iter()
         .map(|(&out, &next_dist)| (out, next_dist))
         .filter(|&(out, _)| !visited.contains(out))
         .collect();
