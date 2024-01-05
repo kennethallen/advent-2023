@@ -1,4 +1,5 @@
 #![feature(btree_cursors)]
+#![feature(exact_size_is_empty)]
 #![feature(is_sorted)]
 #![feature(let_chains)]
 #![feature(map_try_insert)]
