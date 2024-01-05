@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet, VecDeque};
 
 use nom::{IResult, sequence::{terminated, preceded}, combinator::map, bytes::complete::{tag, take_while}, character::complete::char, branch::alt, multi::separated_list1};
-use num_integer::lcm;
+use num::integer::lcm;
 
 pub fn part1(lines: impl Iterator<Item=String>) -> usize {
   let lines: Vec<_> = lines.collect();

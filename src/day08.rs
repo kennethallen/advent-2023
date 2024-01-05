@@ -3,7 +3,7 @@ use std::{collections::{HashMap, HashSet}, mem::{swap, take}};
 use enum_map::{enum_map, Enum, EnumMap};
 use itertools::iproduct;
 use nom::{IResult, character::complete::{char, one_of, line_ending}, multi::{count, many1}, sequence::{terminated, separated_pair, delimited}, combinator::{eof, map}, bytes::complete::tag};
-use num_integer::Integer;
+use num::Integer;
 
 pub fn part1(file: String) -> usize {
   let (route, map) = parse(file.as_str()).unwrap().1;
