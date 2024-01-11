@@ -1,6 +1,8 @@
-use std::{collections::{HashMap, HashSet, BTreeSet}, fs::File, io::Write};
 
-use itertools::Itertools;
+use std::collections::{BTreeSet, HashSet, HashMap, BTreeMap};
+
+use arrayvec::ArrayVec;
+use itertools::{Itertools, iproduct};
 use nom::{IResult, character::complete::{char, alpha1}, multi::separated_list1, combinator::eof, sequence::{separated_pair, terminated}, bytes::complete::tag};
 
 pub fn part1(lines: impl Iterator<Item=String>) -> usize {
@@ -21,26 +23,31 @@ pub fn part1(lines: impl Iterator<Item=String>) -> usize {
     }
   }
 
-  let f = File::create("data/day25.dot").unwrap();
-  write!(&f, "graph D {{\n").unwrap();
-  for (&l, rs) in &wires {
-    for &r in rs {
-      if l <= r {
-        write!(&f, "{} -- {}\n", l, r).unwrap();
+  let mut nodes_iter = wires.keys();
+  let start = *nodes_iter.next().unwrap();
+  let paths: ArrayVec<Vec<_>, 3> = nodes_iter
+    .find_map(|&end| {
+      let mut pathfinder = IndependentPaths { wires: &wires, used: HashSet::new() };
+      let mut paths = ArrayVec::<_, 3>::new();
+      for _ in 0..3 {
+        paths.push(pathfinder.try_block_path(start, end).expect("at least three independent paths should exist"));
       }
-    }
-  }
-  write!(&f, "}}\n").unwrap();
-  drop(f);
+      if pathfinder.try_find_path(start, end).is_some() { return None; }
+
+      Some(paths)
+    })
+    .unwrap()
+    .into_iter()
+    .map(|path| path.into_iter()
+      .tuple_windows()
+      .map(canonical_edge)
+      .collect())
+    .collect();
   
-  wires.iter()
-    .flat_map(|(&l, v)| v.iter()
-      .map(move |&r| (l, r)))
-      .filter(|&(l, r)| l <= r)
-    .permutations(3)
-    .filter_map(|to_cut| {
+  iproduct!(&paths[0], &paths[1], &paths[2])
+    .find_map(|(&e0, &e1, &e2)| {
       let mut trimmed_wires = wires.clone();
-      for (a, b) in to_cut {
+      for (a, b) in [e0, e1, e2] {
         for (l, r) in [(a, b), (b, a)] {
           let rem = trimmed_wires.get_mut(&l).unwrap().remove(&r);
           debug_assert!(rem);
@@ -65,7 +72,7 @@ pub fn part1(lines: impl Iterator<Item=String>) -> usize {
         None
       }
     })
-    .next().unwrap()
+    .unwrap()
 }
 
 fn parse(input: &str) -> IResult<&str, (&str, Vec<&str>)> {
@@ -77,6 +84,45 @@ fn parse(input: &str) -> IResult<&str, (&str, Vec<&str>)> {
     ),
     eof,
   )(input)
+}
+
+struct IndependentPaths<'a> {
+  wires: &'a HashMap<usize, HashSet<usize>>,
+  used: HashSet<(usize, usize)>,
+}
+
+impl <'a> IndependentPaths<'a> {
+  fn try_block_path(&mut self, start: usize, end: usize) -> Option<Vec<usize>> {
+    let path = self.try_find_path(start, end)?;
+    self.used.extend(path.iter()
+      .copied()
+      .tuple_windows()
+      .map(canonical_edge));
+    Some(path)
+  }
+
+  fn try_find_path(&self, start: usize, end: usize) -> Option<Vec<usize>> {
+    let mut explored = HashMap::new();
+    let mut to_explore = BTreeMap::from([(start, vec![start])]);
+    while let Some((node, path)) = to_explore.pop_first() {
+      if node == end { return Some(path); }
+      explored.insert(node, path);
+      for &next in &self.wires[&node] {
+        if !self.used.contains(&canonical_edge((node, next))) && !explored.contains_key(&next) {
+          to_explore.entry(next).or_insert_with_key(|&next| {
+            let mut next_path = explored[&node].clone();
+            next_path.push(next);
+            next_path
+          });
+        }
+      }
+    }
+    None
+  }
+}
+
+fn canonical_edge((a, b): (usize, usize)) -> (usize, usize) {
+  if a <= b { (a, b) } else { (b, a) }
 }
 
 #[cfg(test)]
@@ -91,16 +137,6 @@ mod tests {
 
   #[test]
   fn test1() {
-    assert_eq!(part1(sample_lines("25")), 14672);
+    assert_eq!(part1(sample_lines("25")), 598120);
   }
-
-  /*#[test]
-  fn test2_sample() {
-    assert_eq!(part2(sample_lines("25a")), 47);
-  }
-
-  #[test]
-  fn test2() {
-    assert_eq!(part2(sample_lines("25")), 6486);
-  }*/
 }
