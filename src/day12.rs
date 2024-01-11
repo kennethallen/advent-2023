@@ -6,7 +6,7 @@ use nom::{IResult, character::complete::{char, one_of}, multi::{separated_list1,
 
 pub fn part1(lines: impl Iterator<Item=String>) -> usize {
   let puzzles: Vec<_> = lines
-    .map(|line| parse(line.as_str()).unwrap().1)
+    .map(|line| parse(&line).unwrap().1)
     .collect();
   let mut memo: Memo = Default::default();
   puzzles.iter()
@@ -15,7 +15,7 @@ pub fn part1(lines: impl Iterator<Item=String>) -> usize {
 }
 pub fn part2(lines: impl Iterator<Item=String>) -> usize {
   let puzzles: Vec<_> = lines
-    .map(|line| parse(line.as_str()).unwrap().1)
+    .map(|line| parse(&line).unwrap().1)
     .map(|(pat, runs)| {
       let mut big_pat = Vec::with_capacity(pat.len() * 5 + 4);
       big_pat.extend(&pat);

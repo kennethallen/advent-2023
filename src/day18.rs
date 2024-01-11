@@ -12,7 +12,7 @@ fn process(lines: impl Iterator<Item=String>, instr_idx: usize) -> usize {
   let mut trench = Trench::default();
   trench.dig_horiz(curs, 1);
   for line in lines {
-    let (dir, run) = parse(line.as_str()).unwrap().1[instr_idx];
+    let (dir, run) = parse(&line).unwrap().1[instr_idx];
     match dir {
       Dir::R => {
         trench.dig_horiz((curs.0, curs.1 + 1), run);

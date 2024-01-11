@@ -8,7 +8,7 @@ pub fn part2(lines: impl Iterator<Item=String>) -> usize { process(lines, true) 
 
 fn process(lines: impl Iterator<Item=String>, jokers: bool) -> usize {
   let mut hands: Vec<_> = lines
-    .map(|line| Hand::parse(line.as_str(), jokers).unwrap().1)
+    .map(|line| Hand::parse(&line, jokers).unwrap().1)
     .collect();
 
   hands.sort();

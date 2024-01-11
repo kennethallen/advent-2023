@@ -8,7 +8,7 @@ use num::{BigInt, BigRational, Signed};
 
 pub fn part1(lines: impl Iterator<Item=String>, test_range: (isize, isize)) -> usize {
   let hailstones: Vec<_> = lines
-    .map(|line| parse(line.as_str()).unwrap().1)
+    .map(|line| parse(&line).unwrap().1)
     .map(|(pos, vel)| (flatten(pos), flatten(vel)))
     .collect();
 
@@ -51,7 +51,7 @@ fn flatten<T: Copy>(xyz: [T; 3]) -> [T; 2] {
 
 pub fn part2(lines: impl Iterator<Item=String>) -> usize {
   let hailstones: Vec<_> = lines
-    .map(|line| parse(line.as_str()).unwrap().1)
+    .map(|line| parse(&line).unwrap().1)
     .collect();
 
   let (h0_pos, h0_vel) = hailstones[0];

@@ -6,7 +6,7 @@ use enum_map::{EnumMap, Enum, enum_map};
 use nom::{IResult, character::complete::{char, line_ending, one_of}, multi::{many0, many1, separated_list1}, sequence::{terminated, pair, separated_pair, delimited}, combinator::{eof, map, value}, bytes::complete::take_while, branch::alt};
 
 pub fn part1(file: String) -> usize {
-  let (workflows, parts) = parse(file.as_str()).unwrap().1;
+  let (workflows, parts) = parse(&file).unwrap().1;
   let in_workflow = &workflows["in"];
   parts.into_iter()
     .filter(|part| {
@@ -24,7 +24,7 @@ pub fn part1(file: String) -> usize {
 }
 
 pub fn part2(file: String) -> usize {
-  let (workflows, _) = parse(file.as_str()).unwrap().1;
+  let (workflows, _) = parse(&file).unwrap().1;
   workflows["in"].count_acceptances(
     enum_map! { _ => 1..=4000 },
     |tag| &workflows[tag],

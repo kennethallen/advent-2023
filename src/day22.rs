@@ -37,7 +37,7 @@ struct State {
 
 impl State {
   fn parse(lines: impl Iterator<Item=String>) -> Self {
-    let mut bricks: Vec<_> = lines.map(|line| Brick::parse(line.as_str()).unwrap().1).collect();
+    let mut bricks: Vec<_> = lines.map(|line| Brick::parse(&line).unwrap().1).collect();
 
     let mut cols = HashMap::new();
     for (i, brick) in bricks.iter().enumerate() {

@@ -35,7 +35,7 @@ pub fn part1(lines: impl Iterator<Item=String>) -> usize {
 
 fn parse<'a>(lines: impl Iterator<Item=&'a String>) -> (HashMap<&'a str, Module<'a>>, HashMap<&'a str, Vec<&'a str>>) {
   let mods: HashMap<_, _> = lines
-    .map(|line| parse_module(line.as_str()).unwrap().1)
+    .map(|line| parse_module(&line).unwrap().1)
     .collect();
 
   let mut backrefs = HashMap::new();

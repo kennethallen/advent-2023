@@ -3,7 +3,7 @@ use crate::util::usize;
 use nom::{IResult, character::complete::{char, line_ending, alpha1}, multi::separated_list0, sequence::{terminated, pair, preceded}, combinator::{eof, map}, bytes::complete::take_while, branch::alt};
 
 pub fn part1(file: String) -> usize {
-  parse1(file.as_str()).unwrap().1.into_iter()
+  parse1(&file).unwrap().1.into_iter()
     .map(hash)
     .map(Into::<usize>::into)
     .sum()
@@ -11,7 +11,7 @@ pub fn part1(file: String) -> usize {
 
 pub fn part2(file: String) -> usize {
   let mut boxes: Vec<Vec<(&str, usize)>> = vec![vec![]; 256];
-  for (label, op) in parse2(file.as_str()).unwrap().1 {
+  for (label, op) in parse2(&file).unwrap().1 {
     let box_num: usize = hash(label).into();
     let b = &mut boxes[box_num];
     match (op, b.iter_mut().enumerate().find(|(_, slot)| slot.0 == label)) {

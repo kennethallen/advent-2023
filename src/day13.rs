@@ -7,7 +7,7 @@ pub fn part1(file: String) -> usize { process(file, 0) }
 pub fn part2(file: String) -> usize { process(file, 1) }
 
 fn process(file: String, target_mistakes: usize) -> usize {
-  parse(file.as_str()).unwrap().1.into_iter()
+  parse(&file).unwrap().1.into_iter()
     .map(|pat| {
       (1..pat.len())
         .find(|&y|

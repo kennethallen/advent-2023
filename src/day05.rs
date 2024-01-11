@@ -8,7 +8,7 @@ pub fn part1(file: String) -> usize { process(file, parse_single_seeds) }
 pub fn part2(file: String) -> usize { process(file, parse_seed_ranges) }
 
 fn process(file: String, parse_seeds: impl FnMut(&str) -> IResult<&str, Vec<Range>>) -> usize {
-  let (_, (seed_ranges, maps)) = parse(file.as_str(), parse_seeds).unwrap();
+  let (_, (seed_ranges, maps)) = parse(&file, parse_seeds).unwrap();
 
   let mut ranges: Box<dyn Iterator<Item=Range>> = Box::new(seed_ranges.into_iter());
   for map in &maps {

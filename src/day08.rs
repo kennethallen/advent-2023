@@ -6,7 +6,7 @@ use nom::{IResult, character::complete::{char, one_of, line_ending}, multi::{cou
 use num::Integer;
 
 pub fn part1(file: String) -> usize {
-  let (route, map) = parse(file.as_str()).unwrap().1;
+  let (route, map) = parse(&file).unwrap().1;
   let start = parse_location("AAA").unwrap().1;
   let goal = parse_location("ZZZ").unwrap().1;
 
@@ -104,7 +104,7 @@ impl CyclicSet {
 }
 
 pub fn part2(file: String) -> usize {
-  let (route, map) = parse(file.as_str()).unwrap().1;
+  let (route, map) = parse(&file).unwrap().1;
 
   let jumps: HashMap<_, _> = map.keys()
     .map(|&jump_start| {

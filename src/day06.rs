@@ -9,7 +9,7 @@ pub fn part1(file: String) -> usize { process(file, parse_num_list) }
 pub fn part2(file: String) -> usize { process(file, parse_big_num) }
 
 fn process(file: String, parse_nums: impl Fn(&str) -> IResult<&str, Vec<usize>>) -> usize {
-  let (_, races) = parse(file.as_str(), parse_nums).unwrap();
+  let (_, races) = parse(&file, parse_nums).unwrap();
   races.into_iter()
     .map(|(time, record)| {
       let mut lo = 0;

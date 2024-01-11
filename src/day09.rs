@@ -5,7 +5,7 @@ use nom::{IResult, character::complete::char, multi::separated_list1, sequence::
 
 pub fn part1(lines: impl Iterator<Item=String>) -> isize {
   lines
-    .map(|line| parse(line.as_str()).unwrap().1)
+    .map(|line| parse(&line).unwrap().1)
     .map(|mut ns| {
       let mut sum_lasts = 0;
       loop {
@@ -22,7 +22,7 @@ pub fn part1(lines: impl Iterator<Item=String>) -> isize {
 
 pub fn part2(lines: impl Iterator<Item=String>) -> isize {
   lines
-    .map(|line| parse(line.as_str()).unwrap().1)
+    .map(|line| parse(&line).unwrap().1)
     .map(|mut ns| {
       let mut sum_firsts = 0;
       loop {
